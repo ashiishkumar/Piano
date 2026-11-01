@@ -9,6 +9,7 @@ import {
   Wand2,
   AlertCircle,
 } from 'lucide-react';
+import { CURRICULUM_STAGES } from '../data/curriculum';
 import { useStudioStore } from '../store/useStudioStore';
 import { importUniversalSongFile, parseMusicXmlString } from '../services/SongImporter';
 import { ArrangementTier, SongScore } from '../types/music';
@@ -66,6 +67,7 @@ export const SongImporterView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastImported, setLastImported] = useState<SongScore | null>(null);
+  const [targetStageId, setTargetStageId] = useState<number>(1);
 
   const importedSongs = songs.filter((s) => s.category === 'imported');
 
@@ -76,7 +78,7 @@ export const SongImporterView: React.FC = () => {
     setErrorMessage(null);
 
     try {
-      const parsed = await importUniversalSongFile(file);
+      const parsed = await importUniversalSongFile(file, targetStageId);
       await addImportedSong(parsed);
       setLastImported(parsed);
     } catch (err) {
@@ -96,7 +98,8 @@ export const SongImporterView: React.FC = () => {
     try {
       const parsed = await parseMusicXmlString(
         SAMPLE_BOLLYWOOD_MUSICXML,
-        'Kal_Ho_Naa_Ho_Theme.musicxml'
+        'Kal_Ho_Naa_Ho_Theme.musicxml',
+        targetStageId
       );
       await addImportedSong(parsed);
       setLastImported(parsed);
@@ -135,6 +138,42 @@ export const SongImporterView: React.FC = () => {
             <Sparkles className="w-4 h-4" />
             <span>Test Instant Bollywood MusicXML Import</span>
           </button>
+        </div>
+
+        {/* Stage-Pace Selector so Imported Internet Songs Never Rush the Learner */}
+        <div className="glass-panel rounded-2xl p-4 border border-emerald-500/20 space-y-2.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+                1. Choose Your Current Curriculum Stage Pace (Don&apos;t Rush!)
+              </h2>
+              <p className="text-xs text-slate-400">
+                Importing into Stage 1 or 2 keeps the Beginner tier strictly 1-Hand (Right-Hand melody only) and slows down fast tempos so you can enjoy internet songs at your exact skill level.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            {CURRICULUM_STAGES.map((st) => {
+              const active = targetStageId === st.id;
+              return (
+                <button
+                  key={st.id}
+                  onClick={() => setTargetStageId(st.id)}
+                  className={`p-2.5 rounded-xl text-left border transition-all ${
+                    active
+                      ? 'bg-emerald-500/20 border-emerald-400 text-white shadow-sm'
+                      : 'bg-studio-950/80 border-white/10 text-slate-400 hover:border-white/25 hover:text-slate-200'
+                  }`}
+                >
+                  <div className="text-[10px] font-mono font-bold text-emerald-400">
+                    STAGE {st.id} PACE
+                  </div>
+                  <div className="text-xs font-semibold truncate mt-0.5">{st.badge}</div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Drag & Drop Zone */}

@@ -174,25 +174,260 @@ export function getLiveTeacherNotePrompt(
  * Comprehensive Teacher Lesson Guides for every Stage & Song
  */
 const CUSTOM_LESSON_GUIDES: Record<string, TeacherLessonGuide> = {
-  'stage1-sargam-scale': {
+  'stage1-five-finger-home': {
     whyLearnThis:
-      'If you have played "Sa Re Ga Ma Pa Dha Ni Sa" by ear, you may have run out of fingers after the 5th note! Professional pianists solve this with the "1-2-3-1 Thumb Tuck" after Ga (E4). This lesson teaches your Right Hand that magic movement.',
+      'In both Indian Harmonium/Keyboard Parampara and Western Conservatory pedagogy, your very first day never involves moving or crossing your hand. You rest your 5 Right-Hand fingers on 5 neighboring white keys (Sa Re Ga Ma Pa / C4–G4) so each finger learns its own independent weight and strength.',
     handPlacement: {
       rightHand:
-        'Place your Right Thumb (Finger 1) on Middle C (C4 — 3rd C from the left on your keyboard, marked MID C4). Let fingers 2 and 3 rest on Re (D4) and Ga (E4).',
+        'Rest your Right Thumb (Finger 1) on Middle C (C4 — 3rd C from the left, marked MID C4). Let Index (2) rest on Re (D4), Middle (3) on Ga (E4), Ring (4) on Ma (F4), and Pinky (5) on Pa (G4). Curve your fingers gently like holding a small orange!',
       leftHand:
-        'In Step 1, rest your Left Hand in your lap! In Step 2, place your Left Pinky (Finger 5) on C3 (one octave to the left of Middle C).',
+        'In Step 1 & Step 2, rest your Left Hand comfortably in your lap! In Step 3 (Pro), you can optionally add a single C3 Left-Hand Sa drone.',
     },
     whatTeacherExpects: [
-      'Start in Step 1 (Right Hand Only) so you only focus on 1 note at a time.',
-      'Play Sa (1) -> Re (2) -> Ga (3), then tuck your Thumb (1) under to play Ma (F4)!',
-      'Once comfortable, click Step 2 to add a simple Left-Hand Sa drone, and Step 3 to play in steady rhythm.',
+      'Do NOT move or shift your hand left or right—all 5 keys are already directly under your 5 fingers!',
+      'Press one finger down while keeping the other 4 fingers relaxed on the keys.',
+      'Listen to the steady breathing of Sa -> Re -> Ga -> Ma -> Pa -> Ma -> Ga -> Re -> Sa.',
     ],
     steps: [
       {
         stepNumber: 1,
-        title: 'Step 1: Right Hand Only (Learn Notes & Thumb Tuck)',
-        subtitle: '1 Hand • Wait-for-Me (No Rush)',
+        title: 'Step 1: Right Hand Only (Wait-for-Me • No Rush)',
+        subtitle: '1 Hand (Sa–Pa) • Zero Time Pressure',
+        whatToExpect:
+          'Only the 5 green Right-Hand notes (C4–G4) appear. The lesson pauses at every note until you press the matching finger.',
+        handFilter: 'right',
+        tier: 'beginner',
+        practiceMode: 'wait',
+        tempoMultiplier: 0.75,
+      },
+      {
+        stepNumber: 2,
+        title: 'Step 2: Right Hand in Steady Rhythm',
+        subtitle: '1 Hand (Sa–Pa) • Gentle Metronome',
+        whatToExpect:
+          'Still Right Hand only! Now walk up and down Sa–Re–Ga–Ma–Pa with a calm, steady heartbeat.',
+        handFilter: 'right',
+        tier: 'beginner',
+        practiceMode: 'rhythm',
+        tempoMultiplier: 0.8,
+      },
+      {
+        stepNumber: 3,
+        title: 'Step 3: Optional Tanpura Sa Drone (2 Hands)',
+        subtitle: 'Right Hand + Left Hand C3 Drone',
+        whatToExpect:
+          'Hold a single Left-Hand Sa (C3) at the start of each bar while your Right Hand plays Sa Re Ga Ma Pa.',
+        handFilter: 'both',
+        tier: 'pro',
+        practiceMode: 'wait',
+        tempoMultiplier: 0.85,
+      },
+    ],
+  },
+  'stage1-alankar-1-steps': {
+    whyLearnThis:
+      'Every Indian music student learns Alankars (Paltas)—woven note patterns like "Sa Re Ga, Re Ga Ma, Ga Ma Pa". Because your Ring Finger (4) and Pinky (5) share a tendon in your hand, this 3-note rolling pattern builds vital independence between fingers 3, 4, and 5 before you ever attempt a full scale.',
+    handPlacement: {
+      rightHand:
+        'Keep your Right Hand in the exact same 5-Finger Home (1=Sa/C4, 2=Re/D4, 3=Ga/E4, 4=Ma/F4, 5=Pa/G4). Zero hand shifts!',
+      leftHand:
+        'Keep your Left Hand relaxed in your lap during Step 1 and Step 2.',
+    },
+    whatTeacherExpects: [
+      'Play in groups of 3: (1-2-3), (2-3-4), (3-4-5) going up, then (5-4-3), (4-3-2), (3-2-1) coming down.',
+      'Pay special attention to Ma (Finger 4) and Pa (Finger 5)—make sure they sound just as clear as your Thumb!',
+    ],
+    steps: [
+      {
+        stepNumber: 1,
+        title: 'Step 1: Learn the 3-Note Alankar Pattern (Wait-for-Me)',
+        subtitle: 'Right Hand Only • Self-Paced',
+        whatToExpect:
+          'Practice the ascending and descending 3-note groups at your own speed.',
+        handFilter: 'right',
+        tier: 'beginner',
+        practiceMode: 'wait',
+        tempoMultiplier: 0.75,
+      },
+      {
+        stepNumber: 2,
+        title: 'Step 2: Smooth Alankar Flow in Tempo',
+        subtitle: 'Right Hand Only • Steady Pulse',
+        whatToExpect:
+          'Connect the 3-note groups smoothly (legato) with the metronome.',
+        handFilter: 'right',
+        tier: 'beginner',
+        practiceMode: 'rhythm',
+        tempoMultiplier: 0.8,
+      },
+      {
+        stepNumber: 3,
+        title: 'Step 3: Alankar with Left-Hand Tanpura Drone',
+        subtitle: '2 Hands • Wait-for-Me or Rhythm',
+        whatToExpect:
+          'Add the Left-Hand C3–G3 Tanpura fifth drone underneath your Right-Hand Alankar.',
+        handFilter: 'both',
+        tier: 'pro',
+        practiceMode: 'wait',
+        tempoMultiplier: 0.85,
+      },
+    ],
+  },
+  'stage1-alankar-2-skips': {
+    whyLearnThis:
+      'Real songs don’t just walk next-door—they jump across keys! Alankar #2 ("Sa Ga, Re Ma, Ga Pa") teaches your eyes and fingers to recognize "skips" (playing Finger 1 then Finger 3 while leaving Finger 2 unpressed).',
+    handPlacement: {
+      rightHand:
+        'Keep your 5 Right-Hand fingers anchored on Sa–Re–Ga–Ma–Pa (C4 to G4).',
+      leftHand:
+        'Rest your Left Hand in Step 1 & 2, or place it on C3 for the optional Step 3 drone.',
+    },
+    whatTeacherExpects: [
+      'Play 1 -> 3 (Sa–Ga), then 2 -> 4 (Re–Ma), then 3 -> 5 (Ga–Pa).',
+      'Notice how skipping one white key creates a sweet, harmonious interval called a "Third".',
+    ],
+    steps: [
+      {
+        stepNumber: 1,
+        title: 'Step 1: Right-Hand Skips (Wait-for-Me)',
+        subtitle: '1 Hand • Learn 1-3, 2-4, 3-5',
+        whatToExpect: 'Take your time jumping cleanly between odd and even fingers.',
+        handFilter: 'right',
+        tier: 'beginner',
+        practiceMode: 'wait',
+        tempoMultiplier: 0.75,
+      },
+      {
+        stepNumber: 2,
+        title: 'Step 2: Right-Hand Skips in Rhythm',
+        subtitle: '1 Hand • Steady Beat',
+        whatToExpect: 'Play the skipping Alankar evenly without rushing.',
+        handFilter: 'right',
+        tier: 'beginner',
+        practiceMode: 'rhythm',
+        tempoMultiplier: 0.8,
+      },
+      {
+        stepNumber: 3,
+        title: 'Step 3: Add Left-Hand Drone',
+        subtitle: '2 Hands • Wait-for-Me',
+        whatToExpect: 'Combine your skipping melody with a calm Left-Hand bass note.',
+        handFilter: 'both',
+        tier: 'pro',
+        practiceMode: 'wait',
+        tempoMultiplier: 0.85,
+      },
+    ],
+  },
+  'stage1-jana-gana-5note': {
+    whyLearnThis:
+      'Reward time! Because you mastered the stationary 5-finger home (Sa–Pa), you can play both the opening of "Jana Gana Mana" and Beethoven’s "Ode to Joy" without moving your hand an inch!',
+    handPlacement: {
+      rightHand:
+        'Place Fingers 1–5 on C4–G4 (Sa–Pa). Start with Finger 1 on Sa (C4) for Jana Gana Mana, then Finger 3 on Ga (E4) for Ode to Joy.',
+      leftHand:
+        'Rest your Left Hand in Step 1. In Step 2/3, place Left Pinky on C3 and Thumb on G3.',
+    },
+    whatTeacherExpects: [
+      'Hear how repeated notes (Re-Re-Re-Re-Re-Re) create speech-like rhythm in Jana Gana Mana.',
+      'Play Ode to Joy (Ga-Ga-Ma-Pa-Pa-Ma-Ga-Re) with a warm, singing touch.',
+    ],
+    steps: [
+      {
+        stepNumber: 1,
+        title: 'Step 1: Right-Hand Melody Only (Wait-for-Me)',
+        subtitle: '1 Hand • Stationary C4–G4',
+        whatToExpect: 'Play your first two famous melodies with zero hand movement.',
+        handFilter: 'right',
+        tier: 'beginner',
+        practiceMode: 'wait',
+        tempoMultiplier: 0.75,
+      },
+      {
+        stepNumber: 2,
+        title: 'Step 2: Right-Hand Melody in Rhythm',
+        subtitle: '1 Hand • Song Flow',
+        whatToExpect: 'Make the melodies sing in steady time!',
+        handFilter: 'right',
+        tier: 'beginner',
+        practiceMode: 'rhythm',
+        tempoMultiplier: 0.85,
+      },
+      {
+        stepNumber: 3,
+        title: 'Step 3: Two-Hand Accompaniment Preview',
+        subtitle: '2 Hands • Optional Bass Support',
+        whatToExpect: 'Add simple Left-Hand C3 and G3 bass notes on Beat 1.',
+        handFilter: 'both',
+        tier: 'pro',
+        practiceMode: 'wait',
+        tempoMultiplier: 0.85,
+      },
+    ],
+  },
+  'stage2-thumb-tuck-drill': {
+    whyLearnThis:
+      'To play beyond Pa (G4) and reach Dha, Ni, and high Sȧ (C5), we need 8 notes—but we only have 5 fingers! Before playing the full scale, a great teacher isolates the exact "1-2-3-1" Thumb-Under tuck between Ga (E4) and Ma (F4) so your wrist stays relaxed and never twists.',
+    handPlacement: {
+      rightHand:
+        'Place Finger 1 on Sa (C4), Finger 2 on Re (D4), Finger 3 on Ga (E4). As you play Ga (3), let your Thumb (1) sneak quietly underneath your palm to land on Ma (F4)!',
+      leftHand: 'Rest your Left Hand in your lap during Step 1 and Step 2.',
+    },
+    whatTeacherExpects: [
+      'Never jerk your elbow out to the right when tucking your thumb—let your thumb hinge smoothly under Finger 3.',
+      'On the way down (Ma -> Ga), cross Finger 3 smoothly over Finger 1.',
+    ],
+    steps: [
+      {
+        stepNumber: 1,
+        title: 'Step 1: Slow-Motion Thumb-Tuck (Wait-for-Me)',
+        subtitle: 'Right Hand • 1-2-3-1 Bridge Drill',
+        whatToExpect: 'Practice the Sa-Re-Ga-(Thumb)-Ma bridge at your own pace.',
+        handFilter: 'right',
+        tier: 'beginner',
+        practiceMode: 'wait',
+        tempoMultiplier: 0.75,
+      },
+      {
+        stepNumber: 2,
+        title: 'Step 2: Smooth Bridge in Tempo',
+        subtitle: 'Right Hand • Even Volume',
+        whatToExpect: 'Make sure the thumb note (Ma/F4) doesn’t sound louder or bumpy.',
+        handFilter: 'right',
+        tier: 'beginner',
+        practiceMode: 'rhythm',
+        tempoMultiplier: 0.85,
+      },
+      {
+        stepNumber: 3,
+        title: 'Step 3: Bridge Drill with Left-Hand Sa',
+        subtitle: '2 Hands • Wait-for-Me',
+        whatToExpect: 'Anchor each bar with a Left-Hand C3 bass note.',
+        handFilter: 'both',
+        tier: 'pro',
+        practiceMode: 'wait',
+        tempoMultiplier: 0.85,
+      },
+    ],
+  },
+  'stage1-sargam-scale': {
+    whyLearnThis:
+      'Now that you practiced the 1-2-3-1 Thumb-Tuck micro-drill, you are ready to ascend and descend the entire 8-note Saptak (Sa Re Ga Ma Pa Dha Ni Sȧ / C4 to C5) smoothly without running out of fingers!',
+    handPlacement: {
+      rightHand:
+        'Place your Right Thumb (Finger 1) on Middle C (C4). Play 1-2-3 on C4-D4-E4, tuck Thumb (1) to F4, and finish 1-2-3-4-5 all the way up to High Sȧ (C5)!',
+      leftHand:
+        'In Step 1, rest your Left Hand in your lap! In Step 2, place your Left Pinky (Finger 5) on C3 (one octave left of Middle C).',
+    },
+    whatTeacherExpects: [
+      'Start in Step 1 (Right Hand Only) so you focus purely on 1-2-3-1-2-3-4-5 going up and 5-4-3-2-1-3-2-1 going down.',
+      'Once your Right Hand glides effortlessly, click Step 2 to add the Left-Hand Tanpura drone.',
+    ],
+    steps: [
+      {
+        stepNumber: 1,
+        title: 'Step 1: Right Hand Full Saptak (Wait-for-Me)',
+        subtitle: '1 Hand • 1-2-3-1-2-3-4-5',
         whatToExpect:
           'Only green Right-Hand notes appear. The song pauses at every single note until you press it.',
         handFilter: 'right',
@@ -202,18 +437,18 @@ const CUSTOM_LESSON_GUIDES: Record<string, TeacherLessonGuide> = {
       },
       {
         stepNumber: 2,
-        title: 'Step 2: Add Simple Left-Hand Bass Note',
-        subtitle: '2 Hands (Beginner Tier) • Wait-for-Me',
+        title: 'Step 2: Add Simple Left-Hand Sa Drone',
+        subtitle: '2 Hands • Wait-for-Me',
         whatToExpect:
-          'Adds a single Left-Hand C3 bass note on Beat 1 of each bar while you play the Sa Re Ga Ma scale in your Right Hand.',
+          'Adds a Left-Hand C3/G3 drone while you play the full Sa Re Ga Ma scale in your Right Hand.',
         handFilter: 'both',
-        tier: 'beginner',
+        tier: 'pro',
         practiceMode: 'wait',
         tempoMultiplier: 0.8,
       },
       {
         stepNumber: 3,
-        title: 'Step 3: Play in Steady Rhythm with Metronome',
+        title: 'Step 3: Play Full Saptak in Steady Rhythm',
         subtitle: '2 Hands • Smooth Tempo Flow',
         whatToExpect:
           'Play along with a gentle metronome pulse without stopping between notes.',
@@ -224,9 +459,100 @@ const CUSTOM_LESSON_GUIDES: Record<string, TeacherLessonGuide> = {
       },
     ],
   },
+  'stage2-raag-yaman-black-keys': {
+    whyLearnThis:
+      'In Indian classical music, evening tutorials often begin with Raag Yaman (Kalyan Thaat), which replaces natural Ma (F4) with Tivra Ma (F#4 — the leftmost black key in the group of 3 black keys). This teaches your hand to slide forward slightly onto the raised black keys!',
+    handPlacement: {
+      rightHand:
+        'Start with Finger 1 on low Ni (B3, just left of Middle C) or C4, and when reaching Ma#, lift your Ring Finger (4) onto the F#4 black key.',
+      leftHand: 'Rest Left Hand in Step 1; place on C3–G3 for the Tanpura drone in Step 2 & 3.',
+    },
+    whatTeacherExpects: [
+      'Avoid playing black keys with your short Thumb (Finger 1) whenever possible—use longer fingers 2, 3, or 4.',
+      'Enjoy the unmistakable, serene evening sound of Raag Yaman (Ni Re Ga Ma# Dha Ni Sȧ)!',
+    ],
+    steps: [
+      {
+        stepNumber: 1,
+        title: 'Step 1: Raag Yaman Aaroh & Avroh (Right Hand)',
+        subtitle: '1 Hand • Discover Tivra Ma (F#4)',
+        whatToExpect: 'Learn where F#4 lives on your keyboard with zero time pressure.',
+        handFilter: 'right',
+        tier: 'beginner',
+        practiceMode: 'wait',
+        tempoMultiplier: 0.75,
+      },
+      {
+        stepNumber: 2,
+        title: 'Step 2: Add Left-Hand Sa-Pa Tanpura Drone',
+        subtitle: '2 Hands • Wait-for-Me',
+        whatToExpect: 'Hear how Tivra Ma glows against the C3–G3 Tanpura fifth!',
+        handFilter: 'both',
+        tier: 'pro',
+        practiceMode: 'wait',
+        tempoMultiplier: 0.8,
+      },
+      {
+        stepNumber: 3,
+        title: 'Step 3: Flowing Raag Yaman Alaap in Tempo',
+        subtitle: '2 Hands • Expressive Rhythm',
+        whatToExpect: 'Play the Yaman phrases smoothly in time.',
+        handFilter: 'both',
+        tier: 'pro',
+        practiceMode: 'rhythm',
+        tempoMultiplier: 0.85,
+      },
+    ],
+  },
+  'stage3-left-hand-alone': {
+    whyLearnThis:
+      'The #1 mistake beginners make is jumping straight into two-handed songs when their Left Hand has never practiced on its own! Notice that your Left Hand is a mirror image of your Right Hand: on C3 (Mandra Sa), your Left Pinky is Finger 5 and your Left Thumb is Finger 1 on G3 (Pa).',
+    handPlacement: {
+      rightHand:
+        'Give your Right Hand a break in Step 1 & Step 2! Rest it in your lap while your Left Hand gets the spotlight.',
+      leftHand:
+        'Place your Left Pinky (Finger 5) on Bass C3 (2nd C from the left, one octave below Middle C). Let Ring (4) rest on D3, Middle (3) on E3, Index (2) on F3, and Thumb (1) on G3.',
+    },
+    whatTeacherExpects: [
+      'In Step 1 & 2, ONLY play with your Left Hand (blue notes)!',
+      'Strengthen your Left Pinky (5) on C3 and Left Ring Finger (4) on D3 so your bass notes sound confident and steady.',
+    ],
+    steps: [
+      {
+        stepNumber: 1,
+        title: 'Step 1: Left Hand Alone (Wait-for-Me)',
+        subtitle: 'Left Hand Only (C3–G3) • No Rush',
+        whatToExpect: 'Only blue Left-Hand notes appear. Train Fingers 5-4-3-2-1 in the bass octave!',
+        handFilter: 'left',
+        tier: 'beginner',
+        practiceMode: 'wait',
+        tempoMultiplier: 0.75,
+      },
+      {
+        stepNumber: 2,
+        title: 'Step 2: Left Hand Alone in Steady Rhythm',
+        subtitle: 'Left Hand Only • Bass Pulse',
+        whatToExpect: 'Play the Left-Hand bass pattern in steady rhythm with the metronome.',
+        handFilter: 'left',
+        tier: 'beginner',
+        practiceMode: 'rhythm',
+        tempoMultiplier: 0.85,
+      },
+      {
+        stepNumber: 3,
+        title: 'Step 3: Add Right-Hand Bell Chimes (2 Hands)',
+        subtitle: 'Left Hand Bass + Simple Right Hand',
+        whatToExpect: 'Keep your Left Hand walking steadily while your Right Hand taps gentle whole-note chimes.',
+        handFilter: 'both',
+        tier: 'pro',
+        practiceMode: 'wait',
+        tempoMultiplier: 0.85,
+      },
+    ],
+  },
   'stage1-happy-birthday': {
     whyLearnThis:
-      'Everyone knows how "Happy Birthday" sounds in their head! Here we turn that familiar ear melody into proper finger extensions and a gentle 3-beat waltz accompaniment.',
+      'Everyone knows how "Happy Birthday" sounds in their head! Now that you know the full octave, we turn that familiar ear melody into proper finger extensions (stretching Finger 1 to Finger 5 across a full octave) and a gentle 3-beat waltz.',
     handPlacement: {
       rightHand:
         'Start your Right Thumb (Finger 1) on Pa (G4 — 4 white keys above Middle C4).',
@@ -273,7 +599,7 @@ const CUSTOM_LESSON_GUIDES: Record<string, TeacherLessonGuide> = {
   },
   'stage1-om-shanti-om': {
     whyLearnThis:
-      'Bridge Bollywood ear-playing (Ga-Ma-Pa-Dha-Pa) into a full two-handed studio performance using the famous 4-chord progression (C – Am – F – G).',
+      'Bridge Bollywood ear-playing (Ga-Ma-Pa-Dha-Pa) into a full performance! In Stage 2, focus on the catchy Right-Hand hook first before previewing the famous C–Am–F–G bass roots.',
     handPlacement: {
       rightHand: 'Place your Right Index Finger (Finger 2) on Ga (E4, two white keys right of Middle C).',
       leftHand: 'In Step 2, place your Left Pinky (Finger 5) on C3, ready to step down to A2, F2, and G2.',
@@ -323,8 +649,61 @@ export function getTeacherGuideForSong(song: SongScore): TeacherLessonGuide {
     return CUSTOM_LESSON_GUIDES[song.id];
   }
 
-  // Default intelligent 3-step teacher plan for Stages 2–6 and custom imported songs
-  const startsTwoHand = song.stageId >= 2;
+  // Stage-paced teacher plan for Stage 1 & 2 (One-Hand Fundamental Pace first!)
+  if (song.stageId === 1 || song.stageId === 2) {
+    return {
+      whyLearnThis: `${song.coachTip} (Paced for Stage ${song.stageId}: Master the Right-Hand melody with zero rush before trying two hands!)`,
+      handPlacement: {
+        rightHand:
+          'Position your Right Hand near Middle C (C4) to C5 (green falling notes) and follow the 1–5 finger badges.',
+        leftHand:
+          'In Step 1 & Step 2, rest your Left Hand in your lap so you never feel rushed! In Step 3, optionally add simple Beat-1 bass notes.',
+      },
+      whatTeacherExpects: [
+        `Focus on ${song.pedagogyFocus.join(' & ')}.`,
+        'Step 1: Learn the Right-Hand melody notes in Wait-for-Me mode with zero time pressure.',
+        'Step 2: Play the Right-Hand melody in steady rhythm before optionally trying two hands in Step 3.',
+      ],
+      steps: [
+        {
+          stepNumber: 1,
+          title: 'Step 1: Right-Hand Melody Only (Wait-for-Me)',
+          subtitle: '1 Hand • Self-Paced Note Discovery',
+          whatToExpect:
+            'Only green Right-Hand melody notes appear. The song waits patiently at every note.',
+          handFilter: 'right',
+          tier: 'beginner',
+          practiceMode: 'wait',
+          tempoMultiplier: 0.7,
+        },
+        {
+          stepNumber: 2,
+          title: 'Step 2: Right-Hand Melody in Steady Rhythm',
+          subtitle: '1 Hand • Smooth Metronome Flow',
+          whatToExpect:
+            'Still Right Hand only! Connect the melody notes smoothly with a gentle pulse.',
+          handFilter: 'right',
+          tier: 'beginner',
+          practiceMode: 'rhythm',
+          tempoMultiplier: 0.8,
+        },
+        {
+          stepNumber: 3,
+          title: 'Step 3: Optional Simple Left-Hand Bass (Wait-for-Me)',
+          subtitle: '2 Hands (Beginner Tier) • No Rush',
+          whatToExpect:
+            'Ready for a bonus challenge? Add 1 simple Left-Hand root note at the start of each bar.',
+          handFilter: 'both',
+          tier: 'intermediate',
+          practiceMode: 'wait',
+          tempoMultiplier: 0.8,
+        },
+      ],
+    };
+  }
+
+  // Default intelligent 3-step teacher plan for Stages 3–6 and general custom imported songs
+  const startsTwoHand = song.stageId >= 3;
   return {
     whyLearnThis: song.coachTip,
     handPlacement: {
@@ -357,7 +736,7 @@ export function getTeacherGuideForSong(song: SongScore): TeacherLessonGuide {
         whatToExpect:
           'Combine Left and Right hands at your own pace. The song pauses at every beat until both hands press their keys.',
         handFilter: 'both',
-        tier: startsTwoHand ? 'pro' : 'beginner',
+        tier: startsTwoHand ? 'intermediate' : 'beginner',
         practiceMode: 'wait',
         tempoMultiplier: 0.75,
       },

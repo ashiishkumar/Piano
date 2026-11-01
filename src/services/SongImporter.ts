@@ -74,11 +74,14 @@ export function autoSeparateHands(rawNotes: Omit<ScoreNote, 'hand'>[]): ScoreNot
 
 /**
  * Generates the 3-tier arrangements (Beginner, Intermediate, Pro) from a full Pro note list.
+ * When targetStageId is 1 or 2, the Beginner tier is kept strictly 1-Hand (Right Hand Melody only)
+ * so the learner can practice any imported internet MIDI at their current fundamental pace without being rushed.
  */
 export function buildThreeTierArrangements(
   proNotesInput: ScoreNote[],
   bpm: number,
-  timeSignature: [number, number]
+  timeSignature: [number, number],
+  targetStageId = 0
 ): SongScore['arrangements'] {
   const proNotes = estimateFingeringForNotes(
     [...proNotesInput].sort((a, b) => a.startTime - b.startTime || a.midi - b.midi)
@@ -86,6 +89,7 @@ export function buildThreeTierArrangements(
 
   const secondsPerBeat = 60 / bpm;
   const secondsPerMeasure = secondsPerBeat * timeSignature[0];
+  const isOneHandFundamentalStage = targetStageId === 1 || targetStageId === 2;
 
   // Group by measure for intelligent reduction
   const byMeasure = new Map<number, ScoreNote[]>();
@@ -122,8 +126,8 @@ export function buildThreeTierArrangements(
         finger: undefined,
       });
 
-      // Intermediate keeps top 2 notes (dyad/melody) in RH
-      grp.slice(0, 2).forEach((n, idx) => {
+      // Intermediate keeps top 1-2 notes in RH
+      grp.slice(0, isOneHandFundamentalStage ? 1 : 2).forEach((n, idx) => {
         intermediateRaw.push({
           ...n,
           id: `int-rh-${n.id}-${idx}`,
@@ -132,7 +136,7 @@ export function buildThreeTierArrangements(
       });
     }
 
-    // Left Hand for Beginner: Single root bass note on Beat 1 of the measure
+    // Left Hand root calculation
     const measureStartSec = (measureNum - 1) * secondsPerMeasure;
     const lowestLh = [...lhNotes].sort((a, b) => a.midi - b.midi)[0];
     const fallbackRoot = rhGroups[0]?.[0]
@@ -140,20 +144,35 @@ export function buildThreeTierArrangements(
       : 48;
     const rootMidi = lowestLh ? lowestLh.midi : fallbackRoot;
 
-    beginnerRaw.push({
-      id: `beg-lh-m${measureNum}`,
-      midi: rootMidi,
-      startTime: lowestLh ? lowestLh.startTime : measureStartSec,
-      duration: Math.min(secondsPerMeasure * 0.9, secondsPerBeat * 2),
-      measure: measureNum,
-      beat: 1,
-      hand: 'left',
-      velocity: 60,
-      chordSymbol: getWesternName(rootMidi, false),
-    });
+    // Only add Left Hand in Beginner tier if Stage >= 3 or general import (0)
+    if (!isOneHandFundamentalStage) {
+      beginnerRaw.push({
+        id: `beg-lh-m${measureNum}`,
+        midi: rootMidi,
+        startTime: lowestLh ? lowestLh.startTime : measureStartSec,
+        duration: Math.min(secondsPerMeasure * 0.9, secondsPerBeat * 2),
+        measure: measureNum,
+        beat: 1,
+        hand: 'left',
+        velocity: 60,
+        chordSymbol: getWesternName(rootMidi, false),
+      });
+    }
 
-    // Left Hand for Intermediate: Root + Fifth or block triad on Beat 1 & Beat 3
-    if (lhNotes.length > 0 && lhNotes.length <= 4) {
+    // Left Hand for Intermediate: Single Beat-1 Root for Stage 1/2, or Root + Fifth / Triad for Stage 3+
+    if (isOneHandFundamentalStage) {
+      intermediateRaw.push({
+        id: `int-lh-m${measureNum}`,
+        midi: rootMidi,
+        startTime: lowestLh ? lowestLh.startTime : measureStartSec,
+        duration: Math.min(secondsPerMeasure * 0.9, secondsPerBeat * 2),
+        measure: measureNum,
+        beat: 1,
+        hand: 'left',
+        velocity: 60,
+        chordSymbol: getWesternName(rootMidi, false),
+      });
+    } else if (lhNotes.length > 0 && lhNotes.length <= 4) {
       lhNotes.forEach((ln) =>
         intermediateRaw.push({
           ...ln,
@@ -193,14 +212,22 @@ export function buildThreeTierArrangements(
   return {
     beginner: {
       tier: 'beginner',
-      label: 'Beginner (Melody + Root Bass)',
-      description: 'Single-note Right-Hand melody with Left-Hand root bass on Beat 1.',
+      label: isOneHandFundamentalStage
+        ? `Stage ${targetStageId} Pace (Pure Right-Hand Melody)`
+        : 'Beginner (Melody + Root Bass)',
+      description: isOneHandFundamentalStage
+        ? 'Pure single-note Right-Hand melody with 1–5 finger guidance and zero Left-Hand rush.'
+        : 'Single-note Right-Hand melody with Left-Hand root bass on Beat 1.',
       notes: estimateFingeringForNotes(beginnerRaw),
     },
     intermediate: {
       tier: 'intermediate',
-      label: 'Intermediate (Melody + Chords/Fifths)',
-      description: 'Expressive melody paired with structured Left-Hand harmonic accompaniment.',
+      label: isOneHandFundamentalStage
+        ? 'Next Step (Melody + Single Root Bass)'
+        : 'Intermediate (Melody + Chords/Fifths)',
+      description: isOneHandFundamentalStage
+        ? 'Adds a single Beat-1 Left-Hand bass note once your Right-Hand melody is effortless.'
+        : 'Expressive melody paired with structured Left-Hand harmonic accompaniment.',
       notes: estimateFingeringForNotes(intermediateRaw),
     },
     pro: {
@@ -215,9 +242,20 @@ export function buildThreeTierArrangements(
 /**
  * Parses a standard `.mid` or `.midi` ArrayBuffer using `@tonejs/midi`
  */
-export async function parseMidiFile(buffer: ArrayBuffer, fileName: string): Promise<SongScore> {
+export async function parseMidiFile(
+  buffer: ArrayBuffer,
+  fileName: string,
+  targetStageId = 0
+): Promise<SongScore> {
   const midi = new Midi(buffer);
-  const bpm = Math.round(midi.header.tempos[0]?.bpm || 100);
+  const rawBpm = Math.round(midi.header.tempos[0]?.bpm || 100);
+  // If imported into Stage 1 or 2, cap default tempo to a gentle fundamental pace (68-80 BPM)
+  const bpm =
+    targetStageId === 1
+      ? Math.min(rawBpm, 68)
+      : targetStageId === 2
+      ? Math.min(rawBpm, 78)
+      : rawBpm;
   const ts = midi.header.timeSignatures[0]?.timeSignature || [4, 4];
   const timeSignature: [number, number] = [ts[0] || 4, ts[1] || 4];
   const keySignature = midi.header.keySignatures[0]?.key || 'C';
@@ -278,14 +316,22 @@ export async function parseMidiFile(buffer: ArrayBuffer, fileName: string): Prom
     notesWithHands.reduce((max, n) => Math.max(max, n.startTime + n.duration), 4) || 4;
 
   const cleanTitle = fileName.replace(/\.(mid|midi)$/i, '').replace(/[_-]+/g, ' ');
-  const arrangements = buildThreeTierArrangements(notesWithHands, bpm, timeSignature);
+  const arrangements = buildThreeTierArrangements(
+    notesWithHands,
+    bpm,
+    timeSignature,
+    targetStageId
+  );
 
   return {
     id: `imported-${Date.now()}`,
     title: cleanTitle || 'Imported MIDI Piece',
-    subtitle: 'Universal MIDI Smart Arrangement (3 Tiers)',
+    subtitle:
+      targetStageId > 0
+        ? `Stage ${targetStageId} Custom Practice Melody (Skill-Paced)`
+        : 'Universal MIDI Smart Arrangement (3 Tiers)',
     composer: midi.header.name || 'Imported Score',
-    stageId: 0,
+    stageId: targetStageId,
     category: 'imported',
     bpm,
     timeSignature,
@@ -293,9 +339,14 @@ export async function parseMidiFile(buffer: ArrayBuffer, fileName: string): Prom
     rootSaMidi: 0,
     totalMeasures,
     durationSeconds,
-    pedagogyFocus: ['Custom Repertoire', 'Auto Hand-Split', '3-Tier Simplifier'],
+    pedagogyFocus:
+      targetStageId > 0
+        ? [`Stage ${targetStageId} Extra Practice`, 'Fundamental Pace', '3-Tier Simplifier']
+        : ['Custom Repertoire', 'Auto Hand-Split', '3-Tier Simplifier'],
     coachTip:
-      'Start with the Beginner tier to master the right-hand phrasing and downbeat bass before switching to Intermediate or Pro.',
+      targetStageId === 1 || targetStageId === 2
+        ? `Automatically paced for Stage ${targetStageId}: Start in Beginner tier to practice the pure Right-Hand melody in Wait-for-Me mode with zero rush!`
+        : 'Start with the Beginner tier to master the right-hand phrasing and downbeat bass before switching to Intermediate or Pro.',
     arrangements,
   };
 }
@@ -303,7 +354,11 @@ export async function parseMidiFile(buffer: ArrayBuffer, fileName: string): Prom
 /**
  * Parses a MusicXML (`.musicxml`, `.xml`) string or compressed `.mxl` container
  */
-export async function parseMusicXmlString(xmlText: string, fileName: string): Promise<SongScore> {
+export async function parseMusicXmlString(
+  xmlText: string,
+  fileName: string,
+  targetStageId = 0
+): Promise<SongScore> {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xmlText, 'application/xml');
 
@@ -317,7 +372,13 @@ export async function parseMusicXmlString(xmlText: string, fileName: string): Pr
     'MusicXML Score';
 
   const soundTempo = Number(doc.querySelector('sound[tempo]')?.getAttribute('tempo') || 100);
-  const bpm = Number.isFinite(soundTempo) && soundTempo > 20 ? Math.round(soundTempo) : 100;
+  const rawBpm = Number.isFinite(soundTempo) && soundTempo > 20 ? Math.round(soundTempo) : 100;
+  const bpm =
+    targetStageId === 1
+      ? Math.min(rawBpm, 68)
+      : targetStageId === 2
+      ? Math.min(rawBpm, 78)
+      : rawBpm;
 
   const beats = Number(doc.querySelector('time > beats')?.textContent || 4);
   const beatType = Number(doc.querySelector('time > beat-type')?.textContent || 4);
@@ -419,9 +480,12 @@ export async function parseMusicXmlString(xmlText: string, fileName: string): Pr
   return {
     id: `imported-xml-${Date.now()}`,
     title: workTitle,
-    subtitle: 'MusicXML Smart Arrangement (3 Tiers)',
+    subtitle:
+      targetStageId > 0
+        ? `Stage ${targetStageId} Custom Practice Melody (Skill-Paced)`
+        : 'MusicXML Smart Arrangement (3 Tiers)',
     composer: creator,
-    stageId: 0,
+    stageId: targetStageId,
     category: 'imported',
     bpm,
     timeSignature,
@@ -429,17 +493,31 @@ export async function parseMusicXmlString(xmlText: string, fileName: string): Pr
     rootSaMidi: 0,
     totalMeasures,
     durationSeconds,
-    pedagogyFocus: ['MusicXML Grand Staff', '3-Tier Simplifier'],
-    coachTip: 'Use Wait-for-Me mode first to sight-read unfamiliar measures at your own pace.',
-    arrangements: buildThreeTierArrangements(finalNotes, bpm, timeSignature),
+    pedagogyFocus:
+      targetStageId > 0
+        ? [`Stage ${targetStageId} Extra Practice`, 'Fundamental Pace', '3-Tier Simplifier']
+        : ['MusicXML Grand Staff', '3-Tier Simplifier'],
+    coachTip:
+      targetStageId === 1 || targetStageId === 2
+        ? `Automatically paced for Stage ${targetStageId}: Start in Beginner tier to practice the pure Right-Hand melody in Wait-for-Me mode with zero rush!`
+        : 'Use Wait-for-Me mode first to sight-read unfamiliar measures at your own pace.',
+    arrangements: buildThreeTierArrangements(
+      finalNotes,
+      bpm,
+      timeSignature,
+      targetStageId
+    ),
   };
 }
 
-export async function importUniversalSongFile(file: File): Promise<SongScore> {
+export async function importUniversalSongFile(
+  file: File,
+  targetStageId = 0
+): Promise<SongScore> {
   const lower = file.name.toLowerCase();
   if (lower.endsWith('.mid') || lower.endsWith('.midi')) {
     const buf = await file.arrayBuffer();
-    return parseMidiFile(buf, file.name);
+    return parseMidiFile(buf, file.name, targetStageId);
   }
 
   if (lower.endsWith('.mxl')) {
@@ -459,9 +537,9 @@ export async function importUniversalSongFile(file: File): Promise<SongScore> {
       throw new Error('No valid MusicXML score found inside the .mxl archive.');
     }
     const xmlText = await (scoreXmlFile as JSZip.JSZipObject).async('string');
-    return parseMusicXmlString(xmlText, file.name);
+    return parseMusicXmlString(xmlText, file.name, targetStageId);
   }
 
   const text = await file.text();
-  return parseMusicXmlString(text, file.name);
+  return parseMusicXmlString(text, file.name, targetStageId);
 }

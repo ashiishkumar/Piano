@@ -645,6 +645,10 @@ const CUSTOM_LESSON_GUIDES: Record<string, TeacherLessonGuide> = {
 };
 
 export function getTeacherGuideForSong(song: SongScore): TeacherLessonGuide {
+  // A guide authored with the song wins; then the hand-written guides for the original lessons.
+  if (song.teacherGuide) {
+    return song.teacherGuide;
+  }
   if (CUSTOM_LESSON_GUIDES[song.id]) {
     return CUSTOM_LESSON_GUIDES[song.id];
   }

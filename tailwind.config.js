@@ -9,6 +9,8 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+        // The teacher's voice: instruction headlines, level titles, the greeting.
+        display: ['Fraunces', 'Georgia', 'serif'],
       },
       colors: {
         studio: {

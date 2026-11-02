@@ -1,0 +1,192 @@
+import { chordMidis, diatonicTriads } from '../../engine/theory';
+import { PATTERN_BY_ID } from '../patterns';
+import { ChordDrillPayload, EarPayload, K, PC, PatternPayload, QuizPayload } from './types';
+
+export const FIND_THE_SCALE: QuizPayload = {
+  type: 'quiz',
+  title: 'How to find the scale of a song',
+  subtitle: 'Hear a phrase, say what key it is in',
+  track: 'theory',
+  durationMinutes: 8,
+  source: 'course 8A',
+  objectives: ['Hear which note a phrase treats as home', 'Spot the black keys that give a key away', 'Check a guess with the key detector in My Songs'],
+  questions: [
+    {
+      prompt: 'Hear the phrase. Which key is it in?',
+      kind: 'choice',
+      playMidis: [K.C4, K.E4, K.G4, K.A4, K.G4, K.E4, K.C4],
+      choices: ['C major', 'G major', 'D major', 'A minor'],
+      answerIndex: 0,
+      explanation: 'All white keys, and it comes home to C. C major.',
+    },
+    {
+      prompt: 'Hear the phrase. Which key is it in?',
+      kind: 'choice',
+      playMidis: [K.G4, K.A4, K.B4, K.D5, K.C5, K.B4, K.Fs4, K.G4],
+      choices: ['C major', 'G major', 'F major', 'E minor'],
+      answerIndex: 1,
+      explanation: 'One black key, F♯, and it lands on G. G major.',
+    },
+    {
+      prompt: 'Hear the phrase. Which key is it in?',
+      kind: 'choice',
+      playMidis: [K.A3, K.C4, K.E4, K.D4, K.C4, K.B3, K.A3],
+      choices: ['C major', 'A minor', 'F major', 'D minor'],
+      answerIndex: 1,
+      explanation: 'The same white keys as C major, but every line comes home to A. A minor.',
+    },
+    {
+      prompt: 'Press the home note (Sa) of the phrase you hear.',
+      kind: 'press-key',
+      playMidis: [K.F4, K.G4, K.A4, K.C5, K.A4, K.G4, K.F4],
+      answerMidis: [K.F4],
+      anyOctave: true,
+      explanation: 'It starts and ends on F and uses B♭ rather than B. F major.',
+    },
+    {
+      prompt: 'Hear the phrase. Which key is it in?',
+      kind: 'choice',
+      playMidis: [K.D4, K.E4, K.Fs4, K.A4, K.G4, K.Fs4, K.E4, K.D4],
+      choices: ['D major', 'D minor', 'G major', 'A major'],
+      answerIndex: 0,
+      explanation: 'Two sharps, F♯ and C♯ (the phrase shows F♯), home on D. D major.',
+    },
+    {
+      prompt: 'How many sharps does a song in D major use?',
+      kind: 'choice',
+      choices: ['0', '1', '2', '3'],
+      answerIndex: 2,
+      explanation: 'Two: F♯ and C♯. Each step clockwise on the circle of fifths adds one.',
+    },
+  ],
+};
+
+export const MAJOR_OR_MINOR: QuizPayload = {
+  type: 'quiz',
+  title: 'Major or minor?',
+  subtitle: 'Bright or dark, by ear',
+  track: 'ear',
+  durationMinutes: 6,
+  source: 'course 8B',
+  objectives: ['Tell a major phrase from a minor one in one hearing', 'Name the note that decides it: the third'],
+  questions: [
+    {
+      prompt: 'Hear the phrase. Major or minor?',
+      kind: 'choice',
+      playMidis: [K.C4, K.D4, K.E4, K.G4, K.E4, K.C4],
+      choices: ['Major', 'Minor'],
+      answerIndex: 0,
+      explanation: 'The third note is E, a major third above C.',
+    },
+    {
+      prompt: 'Hear the phrase. Major or minor?',
+      kind: 'choice',
+      playMidis: [K.A3, K.B3, K.C4, K.E4, K.C4, K.A3],
+      choices: ['Major', 'Minor'],
+      answerIndex: 1,
+      explanation: 'A to C is a minor third. A minor.',
+    },
+    {
+      prompt: 'Hear the chord. Major or minor?',
+      kind: 'choice',
+      playMidis: chordMidis(K.D4, 'minor'),
+      playAsChord: true,
+      choices: ['Major', 'Minor'],
+      answerIndex: 1,
+      explanation: 'D F A: the F is a minor third above D.',
+    },
+    {
+      prompt: 'Hear the chord. Major or minor?',
+      kind: 'choice',
+      playMidis: chordMidis(K.F4, 'major'),
+      playAsChord: true,
+      choices: ['Major', 'Minor'],
+      answerIndex: 0,
+      explanation: 'F A C: A is a major third above F.',
+    },
+    {
+      prompt: 'Hear the phrase. Major or minor?',
+      kind: 'choice',
+      playMidis: [K.E4, K.Fs4, K.G4, K.B4, K.G4, K.E4],
+      choices: ['Major', 'Minor'],
+      answerIndex: 1,
+      explanation: 'E to G is a minor third. E minor, the relative minor of G major.',
+    },
+    {
+      prompt: 'Which single note decides whether a chord is major or minor?',
+      kind: 'choice',
+      choices: ['The root', 'The third', 'The fifth', 'The octave'],
+      answerIndex: 1,
+      explanation: 'Four half steps above the root is major; three is minor. The root and fifth are the same in both.',
+    },
+  ],
+};
+
+const C_FAMILY = diatonicTriads(PC.C, 'major').slice(0, 6);
+const G_FAMILY = diatonicTriads(PC.G, 'major').slice(0, 6);
+
+export const CHORD_FAMILIES: ChordDrillPayload = {
+  type: 'chord-drill',
+  title: 'Chord families: I ii iii IV V vi in every key',
+  subtitle: 'The six chords of C major, then of G major',
+  track: 'theory',
+  durationMinutes: 10,
+  source: 'course 8C',
+  objectives: ['Know which six chords live inside a key', 'Play the family of C and the family of G without stopping', 'Hear that I, IV and V are major and ii, iii and vi are minor in every key'],
+  sequence: [...C_FAMILY, ...G_FAMILY].map((c) => ({ rootPc: c.rootPc, quality: c.quality, label: `${c.symbol} (${c.numeral})` })),
+  mode: 'free',
+  match: { allowInversion: true, allowOctaveShift: true, allowDoubling: true },
+  targetTransitionMs: 3000,
+  repeats: 1,
+};
+
+export const CHORDS_BY_EAR: EarPayload = {
+  type: 'ear',
+  title: 'Finding chords by ear',
+  subtitle: 'Hear a chord from the C family, play it back',
+  track: 'ear',
+  durationMinutes: 8,
+  source: 'course 8D',
+  objectives: ['Hear the root of a chord', 'Tell I from IV from V, and vi from ii', 'Play the chord you hear in any inversion'],
+  freeReplays: 1,
+  items: [
+    { kind: 'chord', targetMidis: chordMidis(K.C4, 'major'), anyOctave: true, prompt: 'I. Home.' },
+    { kind: 'chord', targetMidis: chordMidis(K.G3, 'major'), anyOctave: true, prompt: 'V. The one that wants to go home.' },
+    { kind: 'chord', targetMidis: chordMidis(K.F3, 'major'), anyOctave: true, prompt: 'IV. Open and calm.' },
+    { kind: 'chord', targetMidis: chordMidis(K.A3, 'minor'), anyOctave: true, prompt: 'vi. The sad cousin of I.' },
+    { kind: 'chord', targetMidis: chordMidis(K.D4, 'minor'), anyOctave: true },
+    { kind: 'chord', targetMidis: chordMidis(K.G3, 'major'), anyOctave: true },
+    { kind: 'chord', targetMidis: chordMidis(K.E4, 'minor'), anyOctave: true },
+    { kind: 'chord', targetMidis: chordMidis(K.F3, 'major'), anyOctave: true },
+    { kind: 'chord', targetMidis: chordMidis(K.C4, 'major'), anyOctave: true },
+    { kind: 'chord', targetMidis: chordMidis(K.A3, 'minor'), anyOctave: true },
+  ],
+};
+
+export const PRIORITY_PROGRESSIONS: PatternPayload = {
+  type: 'pattern',
+  title: 'Priority progressions: I–V–vi–IV, I–vi–IV–V, ii–V–I',
+  subtitle: 'The loops behind most songs, with a pattern under them, in any key',
+  track: 'chords',
+  durationMinutes: 12,
+  source: 'course 8E',
+  objectives: ['Play the common loops with a left-hand pattern instead of block chords', 'Transpose a loop to the key a singer needs'],
+  templates: [PATTERN_BY_ID['ballad-1585'], PATTERN_BY_ID.rising, PATTERN_BY_ID.alberti, PATTERN_BY_ID.block],
+  progression: [
+    { rootPc: PC.C, quality: 'major' },
+    { rootPc: PC.G, quality: 'major' },
+    { rootPc: PC.A, quality: 'minor' },
+    { rootPc: PC.F, quality: 'major' },
+    { rootPc: PC.C, quality: 'major' },
+    { rootPc: PC.A, quality: 'minor' },
+    { rootPc: PC.F, quality: 'major' },
+    { rootPc: PC.G, quality: 'major' },
+    { rootPc: PC.D, quality: 'minor' },
+    { rootPc: PC.G, quality: 'major' },
+    { rootPc: PC.C, quality: 'major' },
+    { rootPc: PC.C, quality: 'major' },
+  ],
+  bpm: 76,
+  repeats: 1,
+  allowTranspose: true,
+};

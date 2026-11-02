@@ -1,4 +1,11 @@
 import { audioEngine } from './AudioEngine';
+import {
+  KeyboardStateSnapshot,
+  KeyboardStateTracker,
+  MidiMonitorLog,
+  MonitorEntry,
+  decodeMidiMessage,
+} from '../engine/midi';
 
 export interface MidiDeviceInfo {
   id: string;
@@ -26,6 +33,11 @@ type DeviceSubscriber = (
   activeOutputId: string | null,
   webMidiSupported: boolean
 ) => void;
+type KeyboardStateSubscriber = (state: KeyboardStateSnapshot) => void;
+type MonitorSubscriber = (entry: MonitorEntry) => void;
+
+/** How often keyboard-state subscribers are notified while messages are flowing. */
+const KEYBOARD_STATE_THROTTLE_MS = 120;
 
 // Computer keyboard fallback mapping (Lower row = C3-E4, Upper row = C4-G5)
 const QWERTY_NOTE_MAP: Record<string, number> = {
@@ -75,6 +87,14 @@ class MIDIManagerService {
   private qwertyVelocity = 82;   // simulated touch velocity for PC keyboard
   private heldQwertyKeys = new Set<string>();
   private keyboardEnabled = true;
+
+  // Everything the hardware tells us beyond notes: voices, channels, clock, pedals.
+  private tracker = new KeyboardStateTracker();
+  private monitor = new MidiMonitorLog(300);
+  private keyboardStateSubscribers = new Set<KeyboardStateSubscriber>();
+  private monitorSubscribers = new Set<MonitorSubscriber>();
+  private keyboardStateTimer: ReturnType<typeof setTimeout> | null = null;
+  private keyboardStateDirty = false;
 
   public async init(): Promise<void> {
     this.setupComputerKeyboardFallback();
@@ -171,77 +191,122 @@ class MIDIManagerService {
     const data = event.data;
     if (!data || data.length === 0) return;
 
-    const status = data[0];
-    // Ignore Yamaha 0xFE Active Sensing and 0xF8 Timing Clock messages
-    if (status >= 0xf8) return;
+    const now = performance.now();
+    const decoded = decodeMidiMessage(data);
+
+    // Every message, including clock and program changes, feeds the keyboard-state
+    // tracker and the monitor so the Lesson Lab can show what the hardware is doing.
+    this.tracker.ingest(decoded, now);
+    const entry = this.monitor.push(data, decoded, now, sourceInputId);
+    if (entry) this.monitorSubscribers.forEach((cb) => cb(entry));
+    this.scheduleKeyboardStateNotify();
+
+    // Active sensing and clock are not user actions; do not switch inputs or wake the UI for them.
+    if (decoded.kind === 'activesensing' || decoded.kind === 'clock') return;
 
     if (sourceInputId && this.activeInputId !== sourceInputId) {
       this.activeInputId = sourceInputId;
       this.refreshDevices();
     }
 
-    const command = status & 0xf0;
-    const channel = (status & 0x0f) + 1;
-    const data1 = data[1] ?? 0;
-    const data2 = data[2] ?? 0;
-
-    const now = performance.now();
     const rawTime = event.timeStamp || now;
     const latencyMs = Math.max(0.4, Math.min(9.8, Math.abs(now - rawTime)));
+    const channel = decoded.channel ?? 1;
 
-    // Note On (0x90)
-    if (command === 0x90) {
-      if (data2 > 0) {
-        audioEngine.noteOn(data1, data2, false);
+    switch (decoded.kind) {
+      case 'noteon':
+        audioEngine.noteOn(decoded.data1, decoded.data2, false);
         this.emit({
           type: 'noteon',
-          midi: data1,
-          velocity: data2,
+          midi: decoded.data1,
+          velocity: decoded.data2,
           channel,
           timestamp: now,
           latencyMs,
           source: 'hardware',
         });
-      } else {
-        // Velocity 0 = Note Off per MIDI 1.0 specification (used by Yamaha PSR-E373)
-        audioEngine.noteOff(data1);
+        break;
+      case 'noteoff':
+        // Covers both 0x80 and the 0x90 velocity-0 form the PSR-E373 uses
+        audioEngine.noteOff(decoded.data1);
         this.emit({
           type: 'noteoff',
-          midi: data1,
-          velocity: 0,
+          midi: decoded.data1,
+          velocity: decoded.data2,
           channel,
           timestamp: now,
           latencyMs,
           source: 'hardware',
         });
-      }
-    } else if (command === 0x80) {
-      // Explicit Note Off (0x80)
-      audioEngine.noteOff(data1);
-      this.emit({
-        type: 'noteoff',
-        midi: data1,
-        velocity: data2,
-        channel,
-        timestamp: now,
-        latencyMs,
-        source: 'hardware',
-      });
-    } else if (command === 0xb0) {
-      // Control Change (CC 64 = Sustain Pedal)
-      if (data1 === 64) {
-        audioEngine.setSustainPedal(data2);
-        this.emit({
-          type: 'sustain',
-          midi: 64,
-          velocity: data2,
-          channel,
-          timestamp: now,
-          latencyMs,
-          source: 'hardware',
-        });
-      }
+        break;
+      case 'cc':
+        if (decoded.data1 === 64) {
+          audioEngine.setSustainPedal(decoded.data2);
+          this.emit({
+            type: 'sustain',
+            midi: 64,
+            velocity: decoded.data2,
+            channel,
+            timestamp: now,
+            latencyMs,
+            source: 'hardware',
+          });
+        }
+        break;
+      default:
+        // Program change, pitch bend, sysex, transport: tracked above, nothing to play.
+        break;
     }
+  }
+
+  private scheduleKeyboardStateNotify(): void {
+    this.keyboardStateDirty = true;
+    if (this.keyboardStateTimer) return;
+    this.keyboardStateTimer = setTimeout(() => {
+      this.keyboardStateTimer = null;
+      if (!this.keyboardStateDirty) return;
+      this.keyboardStateDirty = false;
+      const snap = this.tracker.snapshot(performance.now());
+      this.keyboardStateSubscribers.forEach((cb) => cb(snap));
+    }, KEYBOARD_STATE_THROTTLE_MS);
+  }
+
+  /** Current decoded hardware state (voices per channel, dual/split, style, clock, pedal). */
+  public getKeyboardState(): KeyboardStateSnapshot {
+    return this.tracker.snapshot(performance.now());
+  }
+
+  public subscribeKeyboardState(cb: KeyboardStateSubscriber): () => void {
+    this.keyboardStateSubscribers.add(cb);
+    cb(this.getKeyboardState());
+    return () => this.keyboardStateSubscribers.delete(cb);
+  }
+
+  public resetKeyboardState(): void {
+    this.tracker.reset();
+    this.scheduleKeyboardStateNotify();
+  }
+
+  public resetVelocitySample(): void {
+    this.tracker.resetVelocities();
+    this.scheduleKeyboardStateNotify();
+  }
+
+  public getMonitorEntries(): MonitorEntry[] {
+    return this.monitor.list();
+  }
+
+  public clearMonitor(): void {
+    this.monitor.clear();
+  }
+
+  public setMonitorFilterClock(on: boolean): void {
+    this.monitor.setFilterClock(on);
+  }
+
+  public subscribeMonitor(cb: MonitorSubscriber): () => void {
+    this.monitorSubscribers.add(cb);
+    return () => this.monitorSubscribers.delete(cb);
   }
 
   /**
@@ -275,12 +340,19 @@ class MIDIManagerService {
   /**
    * Trigger a note from mouse/touch on the 61-key virtual keyboard or from computer keyboard
    */
+  private logVirtual(raw: number[], source: string): void {
+    const decoded = decodeMidiMessage(raw);
+    const entry = this.monitor.push(raw, decoded, performance.now(), source);
+    if (entry) this.monitorSubscribers.forEach((cb) => cb(entry));
+  }
+
   public triggerVirtualNoteOn(
     midi: number,
     velocity = 82,
     source: 'computer-keyboard' | 'mouse' = 'mouse'
   ): void {
     audioEngine.noteOn(midi, velocity, false);
+    this.logVirtual([0x90, midi & 0x7f, velocity & 0x7f], source);
     this.emit({
       type: 'noteon',
       midi,
@@ -297,6 +369,7 @@ class MIDIManagerService {
     source: 'computer-keyboard' | 'mouse' = 'mouse'
   ): void {
     audioEngine.noteOff(midi);
+    this.logVirtual([0x80, midi & 0x7f, 0], source);
     this.emit({
       type: 'noteoff',
       midi,
@@ -311,6 +384,7 @@ class MIDIManagerService {
   public triggerVirtualSustain(down: boolean): void {
     const val = down ? 127 : 0;
     audioEngine.setSustainPedal(val);
+    this.logVirtual([0xb0, 64, val], 'computer-keyboard');
     this.emit({
       type: 'sustain',
       midi: 64,

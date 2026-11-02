@@ -38,3 +38,25 @@
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.07);
 }
+
+/* Fraunces optical sizing: softer at display sizes */
+.font-display {
+  font-variation-settings: 'SOFT' 60;
+  letter-spacing: -0.01em;
+}
+
+/* Keyboard focus is visible everywhere; mouse users don't see rings */
+:focus-visible {
+  outline: 2px solid #34d399;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

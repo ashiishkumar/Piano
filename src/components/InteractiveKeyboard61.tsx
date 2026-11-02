@@ -27,7 +27,13 @@ export const InteractiveKeyboard61: React.FC = () => {
     showHeatmapOverlay,
     keyErrorCounts,
     userProfile,
+    activeTab,
+    activeLesson,
   } = useStudioStore();
+
+  // Song targets only make sense while a song lesson is on screen. In type players
+  // (and especially ear training) the keyboard must not give the answer away.
+  const showSongTargets = activeTab === 'lesson' && !activeLesson;
 
   const minMidi = keyCountMode === 61 ? PSR_E373_MIN_MIDI : FULL_88_MIN_MIDI;
   const maxMidi = keyCountMode === 61 ? PSR_E373_MAX_MIDI : FULL_88_MAX_MIDI;
@@ -40,6 +46,7 @@ export const InteractiveKeyboard61: React.FC = () => {
   // Determine which notes are currently due/expected on the score (for target highlighting & finger badges)
   const expectedMap = useMemo(() => {
     const map = new Map<number, { hand: 'left' | 'right'; finger?: number; isWaiting: boolean }>();
+    if (!showSongTargets) return map;
     const notes = currentSong.arrangements[currentTier].notes;
     for (const n of notes) {
       if (handFilter !== 'both' && n.hand !== handFilter) continue;
@@ -55,7 +62,7 @@ export const InteractiveKeyboard61: React.FC = () => {
       }
     }
     return map;
-  }, [currentSong, currentTier, currentTime, waitingForNoteIds, handFilter]);
+  }, [currentSong, currentTier, currentTime, waitingForNoteIds, handFilter, showSongTargets]);
 
   const allKeys = useMemo(() => Array.from(geometryMap.values()), [geometryMap]);
   const whiteKeys = useMemo(() => allKeys.filter((k) => !k.isBlack), [allKeys]);

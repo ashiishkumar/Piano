@@ -240,7 +240,9 @@ function buildScoreFromSeeds(
 
   const maxBeat = seeds.reduce((m, s) => Math.max(m, s.beatStart + s.beatDur), 4);
   const totalMeasures = Math.max(1, Math.ceil(maxBeat / beatsPerMeasure));
-  const durationSeconds = Number((maxBeat * spb).toFixed(2));
+  // Run to the end of the last bar: the arranger adds bar-long bass notes, and the
+  // engine ends the session at durationSeconds, so a note-end duration cut them off.
+  const durationSeconds = Number((totalMeasures * beatsPerMeasure * spb).toFixed(2));
 
   const arrangements = buildThreeTierArrangements(proNotes, meta.bpm, meta.timeSignature);
 

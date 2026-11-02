@@ -7,6 +7,7 @@ import {
   PSR_E373_MAX_MIDI,
   PSR_E373_MIN_MIDI,
 } from '../utils/notation';
+import { detectKey, parsePitchClass, pitchClassName } from '../engine/theory';
 
 /**
  * Clamps any out-of-bounds MIDI note into the Yamaha PSR-E373 61-key range (36..96)
@@ -510,10 +511,49 @@ export async function parseMusicXmlString(
   };
 }
 
+export interface ImportedKeyInfo {
+  label: string;
+  rootPc: number;
+  mode: 'major' | 'minor';
+  confidence: number;
+  /** The key the file itself declared, if any */
+  declared?: string;
+}
+
+/**
+ * Estimate the key from the full arrangement and write it into the song so Sa
+ * and the key signature are right from the first play. Files that declare a key
+ * keep it when the estimate agrees or is unsure; a confident disagreement wins.
+ */
+export function applyDetectedKey(song: SongScore): { song: SongScore; key: ImportedKeyInfo | null } {
+  const estimate = detectKey(song.arrangements.pro.notes);
+  if (!estimate) return { song, key: null };
+  const declared = song.keySignature && song.keySignature !== 'C' ? song.keySignature : undefined;
+  const info: ImportedKeyInfo = {
+    label: estimate.label,
+    rootPc: estimate.rootPc,
+    mode: estimate.mode,
+    confidence: Number(estimate.confidence.toFixed(2)),
+    declared,
+  };
+  const declaredPc = declared ? parsePitchClass(declared.replace(/m$/, '')) : null;
+  const declaredMode = declared?.endsWith('m') ? 'minor' : 'major';
+  const agree = declaredPc !== null && declaredPc === estimate.rootPc && declaredMode === estimate.mode;
+  const useEstimate = declaredPc === null || agree || estimate.confidence >= 0.75;
+  if (!useEstimate) return { song, key: info };
+  const keySignature = `${pitchClassName(estimate.rootPc)}${estimate.mode === 'minor' ? 'm' : ''}`;
+  return { song: { ...song, keySignature, rootSaMidi: estimate.rootPc }, key: info };
+}
+
 export async function importUniversalSongFile(
   file: File,
   targetStageId = 0
 ): Promise<SongScore> {
+  const parsed = await importRaw(file, targetStageId);
+  return applyDetectedKey(parsed).song;
+}
+
+async function importRaw(file: File, targetStageId: number): Promise<SongScore> {
   const lower = file.name.toLowerCase();
   if (lower.endsWith('.mid') || lower.endsWith('.midi')) {
     const buf = await file.arrayBuffer();

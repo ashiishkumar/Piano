@@ -8,20 +8,57 @@ import {
   NoteEvaluationEvent,
   PracticeMode,
   PracticeSessionRecord,
-  ProblemSpot,
-  ScoreNote,
   SongScore,
   TimingClassification,
 } from '../types/music';
-import { BUILTIN_SONGS } from '../data/curriculum';
+import { ALL_SONGS } from '../content/songs';
 import { MidiDeviceInfo, midiManager } from '../services/MIDIManager';
 import { audioEngine } from '../services/AudioEngine';
 import { db, recordSessionToDb, SongMasteryRecord, UserProfileRecord } from '../db/database';
 import { getWesternName } from '../utils/notation';
 import { getTeacherGuideForSong } from '../utils/teacherGuidance';
+import {
+  clusterAtEarliestOnset,
+  findCandidates,
+  findDueWaitNotes,
+  findMissedNotes,
+  initialWaitIds,
+  isUserNote,
+  loopAccuracy,
+  resolvePress,
+} from '../engine/matching';
+import { classifyTiming, computeDeltaMs, evaluateArticulation } from '../engine/timing';
+import { summarizeSession } from '../engine/session';
+import {
+  LessonStatus,
+  ProgressMap,
+  applyAttempt,
+  computeLessonStatuses,
+  progressFromSongMastery,
+} from '../engine/progress';
+import { LEVELS, LESSON_BY_ID, LESSON_BY_SONG_ID } from '../content/path';
+import { shouldShowFirstRun } from '../engine/dailyPlan';
+import { ReadyLesson } from '../types/lesson';
+import { masterScoreOf, passScoreOf } from '../engine/progress';
+import {
+  AUTO_RAMP_MAX_MULTIPLIER,
+  AUTO_RAMP_MIN_ACCURACY,
+  AUTO_RAMP_STEP,
+  MISSED_DELTA_MS,
+  WAIT_HELD_RECENT_MS,
+} from '../engine/constants';
+
+export interface LessonResult {
+  lessonId: string;
+  score: number;
+  passed: boolean;
+  mastered: boolean;
+  /** One line the player wants to say about the attempt, e.g. "6 of 6 chords, 2 wrong tries" */
+  summary?: string;
+}
 
 export type ViewportLayout = 'split' | 'highway' | 'sheet';
-export type StudioTab = 'studio' | 'curriculum' | 'importer' | 'analytics';
+export type StudioTab = 'today' | 'path' | 'lesson' | 'songs' | 'progress' | 'lab';
 export type UiComplexityMode = 'guided' | 'pro';
 
 export interface HitBurstParticle {
@@ -37,6 +74,8 @@ export interface HitBurstParticle {
 interface StudioState {
   // Navigation & Viewport
   activeTab: StudioTab;
+  /** The one-time introduction (keyboard check, Middle C, Sa Re Ga) */
+  showFirstRun: boolean;
   uiComplexityMode: UiComplexityMode;
   activeLessonStep: 1 | 2 | 3;
   showLessonBriefingModal: boolean;
@@ -98,6 +137,18 @@ interface StudioState {
   masteryMap: Record<string, SongMasteryRecord>;
   userProfile: UserProfileRecord;
 
+  // Learning path progress (lesson model)
+  lessonProgress: ProgressMap;
+  lessonStatuses: Record<string, LessonStatus>;
+  /** The lesson the current song belongs to, if any */
+  currentLessonId: string | null;
+  /** A non-song lesson being played (concept, rhythm, chord drill, quiz, keyboard task). Null while a song lesson is open. */
+  activeLesson: ReadyLesson | null;
+  /** Result card for a finished non-song lesson */
+  lessonResult: LessonResult | null;
+  /** Bumped every time a lesson is opened so "Try again" gets a fresh player */
+  activeLessonNonce: number;
+
   // Actions
   setActiveTab: (tab: StudioTab) => void;
   setUiComplexityMode: (mode: UiComplexityMode) => void;
@@ -138,6 +189,19 @@ interface StudioState {
   closeReportModal: () => void;
   addImportedSong: (song: SongScore) => Promise<void>;
   loadPersistedData: () => Promise<void>;
+  /** Record an attempt at a lesson and recompute path statuses. */
+  recordLessonResult: (lessonId: string, score: number) => Promise<void>;
+  /** Open a lesson from the path. Score lessons load their song; other types are not playable yet. */
+  openLesson: (lessonId: string) => void;
+  /** Open a lesson and go straight to playing, skipping the briefing (used by "Continue"). */
+  startLesson: (lessonId: string) => void;
+  /** A type player reports its final score; progress is recorded and the result card shown. */
+  finishActiveLesson: (score: number, summary?: string) => Promise<void>;
+  /** Play a song built on the fly (pattern lessons) in the song engine, crediting the given lesson. */
+  playGeneratedSong: (song: SongScore, lessonId: string) => void;
+  closeLessonResult: () => void;
+  completeFirstRun: () => Promise<void>;
+  replayFirstRun: () => void;
 }
 
 const DEFAULT_PROFILE: UserProfileRecord = {
@@ -155,7 +219,8 @@ const triggeredBackingIds = new Set<string>();
 let lastMetronomeBeatIndex = -1;
 
 export const useStudioStore = create<StudioState>((set, get) => ({
-  activeTab: 'studio',
+  activeTab: 'today',
+  showFirstRun: false,
   uiComplexityMode: 'guided',
   activeLessonStep: 1,
   showLessonBriefingModal: false,
@@ -180,8 +245,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   metronomeEnabled: true,
   activeNotes: {},
 
-  songs: BUILTIN_SONGS,
-  currentSong: BUILTIN_SONGS[0],
+  songs: ALL_SONGS,
+  currentSong: ALL_SONGS[0],
   currentTier: 'beginner',
   practiceMode: 'wait',
   handFilter: 'right',
@@ -191,11 +256,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   tempoMultiplier: 0.75,
   loopEnabled: false,
   loopStartMeasure: 1,
-  loopEndMeasure: BUILTIN_SONGS[0].totalMeasures,
+  loopEndMeasure: ALL_SONGS[0].totalMeasures,
   autoRampTempo: false,
-  waitingForNoteIds: BUILTIN_SONGS[0].arrangements.beginner.notes
-    .filter((n) => n.hand === 'right' && n.startTime <= 0.045)
-    .map((n) => n.id),
+  waitingForNoteIds: initialWaitIds(ALL_SONGS[0].arrangements.beginner.notes, 'right'),
   waitStartedAtMs: performance.now(),
 
   matchedNoteIds: {},
@@ -210,7 +273,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       timestamp: Date.now(),
       type: 'posture',
       title: 'Step 1: Right Hand Only (Wait-for-Me)',
-      message: BUILTIN_SONGS[0].coachTip,
+      message: ALL_SONGS[0].coachTip,
       severity: 'info',
     },
   ],
@@ -221,6 +284,13 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   masteryMap: {},
   userProfile: DEFAULT_PROFILE,
 
+  lessonProgress: {},
+  lessonStatuses: computeLessonStatuses(LEVELS, {}),
+  currentLessonId: LESSON_BY_SONG_ID[ALL_SONGS[0].id]?.id ?? null,
+  activeLesson: null,
+  lessonResult: null,
+  activeLessonNonce: 0,
+
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   setUiComplexityMode: (mode) =>
@@ -228,6 +298,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       uiComplexityMode: mode,
       viewportLayout: mode === 'pro' ? 'split' : 'highway',
       showHeatmapOverlay: mode === 'guided' ? false : s.showHeatmapOverlay,
+      lessonStatuses: computeLessonStatuses(LEVELS, s.lessonProgress, { unlockAll: mode === 'pro' }),
     })),
 
   applyLessonStep: (stepNumber) => {
@@ -238,13 +309,10 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     lastMetronomeBeatIndex = -1;
     audioEngine.panic();
 
-    const initialWaitIds = state.currentSong.arrangements[stepConfig.tier].notes
-      .filter(
-        (n) =>
-          (stepConfig.handFilter === 'both' || n.hand === stepConfig.handFilter) &&
-          n.startTime <= 0.045
-      )
-      .map((n) => n.id);
+    const startIds = initialWaitIds(
+      state.currentSong.arrangements[stepConfig.tier].notes,
+      stepConfig.handFilter
+    );
 
     set({
       activeLessonStep: stepNumber,
@@ -254,7 +322,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       tempoMultiplier: stepConfig.tempoMultiplier,
       isPlaying: true,
       currentTime: 0,
-      waitingForNoteIds: stepConfig.practiceMode === 'wait' ? initialWaitIds : [],
+      waitingForNoteIds: stepConfig.practiceMode === 'wait' ? startIds : [],
       waitStartedAtMs: stepConfig.practiceMode === 'wait' ? performance.now() : null,
       matchedNoteIds: {},
       sessionEvaluations: [],
@@ -306,12 +374,13 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     lastMetronomeBeatIndex = -1;
     audioEngine.panic();
 
-    const initialWaitIds = found.arrangements[nextTier].notes
-      .filter((n) => (nextHandFilter === 'both' || n.hand === nextHandFilter) && n.startTime <= 0.045)
-      .map((n) => n.id);
+    const startIds = initialWaitIds(found.arrangements[nextTier].notes, nextHandFilter);
 
     set({
       currentSong: found,
+      currentLessonId: LESSON_BY_SONG_ID[found.id]?.id ?? null,
+      activeLesson: null,
+      lessonResult: null,
       activeLessonStep: stepNumber,
       currentTier: nextTier,
       handFilter: nextHandFilter,
@@ -322,7 +391,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       loopEnabled: false,
       loopStartMeasure: 1,
       loopEndMeasure: found.totalMeasures,
-      waitingForNoteIds: nextPracticeMode === 'wait' ? initialWaitIds : [],
+      waitingForNoteIds: nextPracticeMode === 'wait' ? startIds : [],
       waitStartedAtMs: nextPracticeMode === 'wait' ? performance.now() : null,
       matchedNoteIds: {},
       sessionEvaluations: [],
@@ -330,7 +399,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       keyErrorCounts: {},
       keyHitCounts: {},
       hitBursts: [],
-      activeTab: 'studio',
+      activeTab: 'lesson',
       showLessonBriefingModal: true,
       coachingAlerts: [
         {
@@ -349,15 +418,13 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     const state = get();
     triggeredBackingIds.clear();
     lastMetronomeBeatIndex = -1;
-    const initialWaitIds = state.currentSong.arrangements[tier].notes
-      .filter((n) => (state.handFilter === 'both' || n.hand === state.handFilter) && n.startTime <= 0.045)
-      .map((n) => n.id);
+    const startIds = initialWaitIds(state.currentSong.arrangements[tier].notes, state.handFilter);
 
     set({
       currentTier: tier,
       isPlaying: state.practiceMode === 'wait',
       currentTime: 0,
-      waitingForNoteIds: state.practiceMode === 'wait' ? initialWaitIds : [],
+      waitingForNoteIds: state.practiceMode === 'wait' ? startIds : [],
       waitStartedAtMs: state.practiceMode === 'wait' ? performance.now() : null,
       matchedNoteIds: {},
       sessionEvaluations: [],
@@ -407,7 +474,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
     set({
       currentSong: found,
-      activeTab: 'studio',
+      activeTab: 'lesson',
       showReportModal: false,
       loopEnabled: true,
       loopStartMeasure: startMeasure,
@@ -425,7 +492,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           id: `drill-${Date.now()}`,
           timestamp: Date.now(),
           type: 'timing',
-          title: `Targeted Loop Drill: Measures ${startMeasure}–${endMeasure}`,
+          title: `Targeted Loop Drill: Measures ${startMeasure}�${endMeasure}`,
           message: `Auto-Ramp Speed Trainer active at ${Math.round(found.bpm * mult)} BPM. Achieve >=95% accuracy on the loop to auto-advance tempo by +5%!`,
           measure: startMeasure,
           severity: 'info',
@@ -499,23 +566,18 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     const spb = 60 / song.bpm;
     const spm = spb * song.timeSignature[0];
 
-    // Check which notes belong to the user vs backing generator
-    const isUserNote = (n: ScoreNote) =>
-      state.handFilter === 'both' || n.hand === state.handFilter;
-
     // 1. In "Wait-for-Me" Flow Mode, check if any unmatched user note has reached its startTime
     if (state.practiceMode === 'wait') {
-      const dueNotes = notes.filter(
-        (n) =>
-          isUserNote(n) &&
-          !state.matchedNoteIds[n.id] &&
-          n.startTime <= state.currentTime + 0.025 &&
-          n.startTime >= state.currentTime - 0.35
+      const dueNotes = findDueWaitNotes(
+        notes,
+        state.currentTime,
+        state.matchedNoteIds,
+        state.handFilter
       );
 
       if (dueNotes.length > 0) {
-        const earliestOnset = Math.min(...dueNotes.map((d) => d.startTime));
-        const chordCluster = dueNotes.filter((d) => Math.abs(d.startTime - earliestOnset) < 0.045);
+        const chordCluster = clusterAtEarliestOnset(dueNotes);
+        const earliestOnset = Math.min(...chordCluster.map((d) => d.startTime));
 
         // If user is already holding any of the chord notes (e.g. pressed simultaneously or at t=0), mark them matched
         const nowPerf = performance.now();
@@ -523,7 +585,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         for (const d of chordCluster) {
           if (!state.matchedNoteIds[d.id]) {
             const held = state.activeNotes[d.midi];
-            if (held && (earliestOnset === 0 || nowPerf - held.timestamp < 350)) {
+            if (held && (earliestOnset === 0 || nowPerf - held.timestamp < WAIT_HELD_RECENT_MS)) {
               autoMatched[d.id] = 'perfect';
             }
           }
@@ -591,36 +653,35 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
     // 4. In Strict Rhythm Mode, mark overdue unmatched notes (>160ms late) as 'missed'
     if (state.practiceMode === 'rhythm') {
-      const missThresholdSec = 0.16 * state.tempoMultiplier;
       const newlyMissed: Record<string, TimingClassification> = {};
       const newEvals: NoteEvaluationEvent[] = [];
       const newKeyErrors = { ...state.keyErrorCounts };
 
-      for (const n of notes) {
-        if (
-          isUserNote(n) &&
-          !state.matchedNoteIds[n.id] &&
-          nextTime - n.startTime > missThresholdSec
-        ) {
-          newlyMissed[n.id] = 'missed';
-          newKeyErrors[n.midi] = (newKeyErrors[n.midi] || 0) + 1;
-          newEvals.push({
-            noteId: n.id,
-            expectedMidi: n.midi,
-            actualMidi: -1,
-            hand: n.hand,
-            measure: n.measure,
-            expectedTime: n.startTime,
-            actualTime: nextTime,
-            deltaMs: 180,
-            timingClass: 'missed',
-            expectedVelocity: n.velocity,
-            actualVelocity: 0,
-            expectedDuration: n.duration,
-            isWrongPitch: true,
-            isFatFinger: false,
-          });
-        }
+      for (const n of findMissedNotes(
+        notes,
+        nextTime,
+        state.matchedNoteIds,
+        state.handFilter,
+        state.tempoMultiplier
+      )) {
+        newlyMissed[n.id] = 'missed';
+        newKeyErrors[n.midi] = (newKeyErrors[n.midi] || 0) + 1;
+        newEvals.push({
+          noteId: n.id,
+          expectedMidi: n.midi,
+          actualMidi: -1,
+          hand: n.hand,
+          measure: n.measure,
+          expectedTime: n.startTime,
+          actualTime: nextTime,
+          deltaMs: MISSED_DELTA_MS,
+          timingClass: 'missed',
+          expectedVelocity: n.velocity,
+          actualVelocity: 0,
+          expectedDuration: n.duration,
+          isWrongPitch: true,
+          isFatFinger: false,
+        });
       }
 
       if (Object.keys(newlyMissed).length > 0) {
@@ -638,29 +699,31 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
     if (state.loopEnabled && nextTime >= Math.min(loopEndSec, song.durationSeconds)) {
       // Evaluate loop accuracy for Auto-Ramp Speed Trainer
-      const loopNotes = notes.filter(
-        (n) =>
-          isUserNote(n) &&
-          n.measure >= state.loopStartMeasure &&
-          n.measure <= state.loopEndMeasure
+      const { loopNotes, accuracy } = loopAccuracy(
+        notes,
+        state.matchedNoteIds,
+        state.handFilter,
+        state.loopStartMeasure,
+        state.loopEndMeasure
       );
-      const hitCount = loopNotes.filter(
-        (n) =>
-          state.matchedNoteIds[n.id] && state.matchedNoteIds[n.id] !== 'missed'
-      ).length;
-      const loopAccuracy = loopNotes.length > 0 ? (hitCount / loopNotes.length) * 100 : 100;
 
       let nextMult = state.tempoMultiplier;
       const alerts = [...state.coachingAlerts];
 
-      if (state.autoRampTempo && loopAccuracy >= 95 && state.tempoMultiplier < 1.35) {
-        nextMult = Number(Math.min(1.35, state.tempoMultiplier + 0.05).toFixed(2));
+      if (
+        state.autoRampTempo &&
+        accuracy >= AUTO_RAMP_MIN_ACCURACY &&
+        state.tempoMultiplier < AUTO_RAMP_MAX_MULTIPLIER
+      ) {
+        nextMult = Number(
+          Math.min(AUTO_RAMP_MAX_MULTIPLIER, state.tempoMultiplier + AUTO_RAMP_STEP).toFixed(2)
+        );
         alerts.unshift({
           id: `ramp-${Date.now()}`,
           timestamp: Date.now(),
           type: 'praise',
           title: `Speed Trainer +5% -> ${Math.round(song.bpm * nextMult)} BPM!`,
-          message: `You achieved ${Math.round(loopAccuracy)}% accuracy on Measures ${state.loopStartMeasure}–${state.loopEndMeasure}. Tempo automatically increased!`,
+          message: `You achieved ${Math.round(accuracy)}% accuracy on Measures ${state.loopStartMeasure}�${state.loopEndMeasure}. Tempo automatically increased!`,
           measure: state.loopStartMeasure,
           severity: 'success',
         });
@@ -714,22 +777,20 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       // Check Note Duration & Articulation Telemetry on Note Off
       const holdInfo = state.activeHoldTracking[midi];
       if (holdInfo) {
-        const heldSec = ((nowPerf - holdInfo.startPerfMs) / 1000) * state.tempoMultiplier;
-        const ratio = heldSec / Math.max(0.1, holdInfo.expectedDurSec);
-        let articulationIssue: 'cut-short' | 'over-held' | 'ok' = 'ok';
-        if (holdInfo.articulation === 'legato' && ratio < 0.5) {
-          articulationIssue = 'cut-short';
-        } else if (holdInfo.articulation === 'staccato' && ratio > 1.5) {
-          articulationIssue = 'over-held';
-        }
+        const art = evaluateArticulation(
+          (nowPerf - holdInfo.startPerfMs) / 1000,
+          holdInfo.expectedDurSec,
+          state.tempoMultiplier,
+          holdInfo.articulation
+        );
 
         const updatedEvals = state.sessionEvaluations.map((ev) =>
           ev.noteId === holdInfo.noteId
             ? {
                 ...ev,
-                actualDuration: Number(heldSec.toFixed(3)),
-                durationRatio: Number(ratio.toFixed(2)),
-                articulationIssue,
+                actualDuration: art.heldSec,
+                durationRatio: art.ratio,
+                articulationIssue: art.issue,
               }
             : ev
         );
@@ -762,68 +823,45 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       [midi]: (state.keyHitCounts[midi] || 0) + 1,
     };
 
+    // Keys pressed anywhere but the song lesson screen are free play: light the key,
+    // report what was heard, but never score a song behind the scenes. Type players
+    // (concept, rhythm, chord drill, quiz, keyboard task) listen to MIDI directly.
+    if (state.activeTab !== 'lesson' || state.activeLesson) {
+      set({
+        activeNotes: nextActiveNotes,
+        lastMidiChannel: channel,
+        lastLatencyMs: latencyMs,
+        lastVelocity: velocity,
+      });
+      return;
+    }
+
     const song = state.currentSong;
     const notes = song.arrangements[state.currentTier].notes;
-    const isUserNote = (n: ScoreNote) =>
-      state.handFilter === 'both' || n.hand === state.handFilter;
 
-    // Candidate window around currentTime
-    const windowSec = state.practiceMode === 'wait' ? 0.35 : 0.24;
-    let candidates = notes.filter(
-      (n) =>
-        isUserNote(n) &&
-        !state.matchedNoteIds[n.id] &&
-        Math.abs(n.startTime - state.currentTime) <= windowSec
-    );
+    const candidates = findCandidates({
+      notes,
+      currentTime: state.currentTime,
+      matched: state.matchedNoteIds,
+      handFilter: state.handFilter,
+      mode: state.practiceMode,
+    });
+    const resolution = resolvePress(candidates, midi, state.practiceMode);
 
-    // In Wait-for-Me mode, if all notes at currentTime are already matched (or we are rolling toward the next beat),
-    // allow matching the next upcoming beat cluster immediately so the player never gets blocked waiting for scroll
-    if (state.practiceMode === 'wait' && candidates.length === 0) {
-      const futureUnmatched = notes.filter(
-        (n) =>
-          isUserNote(n) &&
-          !state.matchedNoteIds[n.id] &&
-          n.startTime >= state.currentTime - 0.35 &&
-          n.startTime <= state.currentTime + 1.5
-      );
-      if (futureUnmatched.length > 0) {
-        const nextOnset = Math.min(...futureUnmatched.map((n) => n.startTime));
-        candidates = futureUnmatched.filter((n) => Math.abs(n.startTime - nextOnset) < 0.045);
-      }
-    }
+    if (resolution.kind === 'match') {
+      const exactMatch = resolution.note;
+      const isOctaveShiftedMatch = resolution.octaveShifted;
 
-    let exactMatch = candidates.find((n) => n.midi === midi);
-    let isOctaveShiftedMatch = false;
-
-    // In Wait-for-Me mode, if no exact MIDI match was found, check if the user played the right pitch class (e.g. Sa / C)
-    // in a different octave on their 61-key keyboard so the tutorial still advances smoothly with an octave coaching tip
-    if (!exactMatch && state.practiceMode === 'wait' && candidates.length > 0) {
-      const pitchClassMatch = candidates.find(
-        (n) => (((n.midi - midi) % 12) + 12) % 12 === 0
-      );
-      if (pitchClassMatch) {
-        exactMatch = pitchClassMatch;
-        isOctaveShiftedMatch = true;
-      }
-    }
-
-    if (exactMatch) {
-      // Compute micro-timing drift in milliseconds
-      const rawDeltaMs =
-        state.practiceMode === 'wait' && state.waitStartedAtMs
-          ? Math.round(nowPerf - state.waitStartedAtMs)
-          : Math.round(((state.currentTime - exactMatch.startTime) / state.tempoMultiplier) * 1000);
-
-      const absDelta = Math.abs(rawDeltaMs);
-      let timingClass: TimingClassification = 'perfect';
-      if (state.practiceMode === 'wait') {
-        timingClass = rawDeltaMs <= 180 ? 'perfect' : rawDeltaMs <= 450 ? 'good' : 'late';
-      } else {
-        if (absDelta <= 25) timingClass = 'perfect';
-        else if (absDelta <= 60) timingClass = 'good';
-        else if (rawDeltaMs < -60) timingClass = 'early';
-        else timingClass = 'late';
-      }
+      // Micro-timing drift in milliseconds (reaction time in wait mode, beat drift in rhythm mode)
+      const rawDeltaMs = computeDeltaMs({
+        mode: state.practiceMode,
+        nowPerfMs: nowPerf,
+        waitStartedAtMs: state.waitStartedAtMs,
+        currentTime: state.currentTime,
+        noteStartTime: exactMatch.startTime,
+        tempoMultiplier: state.tempoMultiplier,
+      });
+      const timingClass = classifyTiming(state.practiceMode, rawDeltaMs);
 
       const evalEvent: NoteEvaluationEvent = {
         noteId: exactMatch.id,
@@ -893,7 +931,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
             timestamp: Date.now(),
             type: 'balance',
             title: 'Hand Balance Alert (LH Overpowering RH)',
-            message: `Tip: Lighten your Left Hand chord touch (currently ~${Math.round(avgLh)})—keep LH velocity around 55–65 and RH melody around 80–95.`,
+            message: `Tip: Lighten your Left Hand chord touch (currently ~${Math.round(avgLh)})�keep LH velocity around 55�65 and RH melody around 80�95.`,
             measure: exactMatch.measure,
             severity: 'warning',
           });
@@ -916,7 +954,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           : state.currentTime;
 
       set({
-        isPlaying: state.activeTab === 'studio' ? true : state.isPlaying,
+        isPlaying: state.activeTab === 'lesson' ? true : state.isPlaying,
         currentTime: nextCurrentTime,
         activeNotes: nextActiveNotes,
         lastMidiChannel: channel,
@@ -939,13 +977,11 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         hitBursts: [...state.hitBursts.slice(-18), burst],
         coachingAlerts: nextAlerts.slice(0, 8),
       });
-    } else if (state.isPlaying && candidates.length > 0) {
-      // User pressed a wrong key while playing! Check if it's an adjacent fat-fingered key (|diff| <= 2)
-      const nearestTarget = candidates.reduce((best, curr) =>
-        Math.abs(curr.midi - midi) < Math.abs(best.midi - midi) ? curr : best
-      );
-      const semitoneDist = Math.abs(nearestTarget.midi - midi);
-      const isFatFinger = semitoneDist > 0 && semitoneDist <= 2;
+    } else if (resolution.kind === 'wrong' && state.isPlaying) {
+      // User pressed a wrong key while playing. The engine tells us the nearest intended note
+      // and whether this was an adjacent-key slip.
+      const nearestTarget = resolution.nearest;
+      const isFatFinger = resolution.isFatFinger;
 
       const wrongEval: NoteEvaluationEvent = {
         noteId: `wrong-${nowPerf}`,
@@ -1007,192 +1043,114 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   finishAndSaveSession: async () => {
     const state = get();
-    const song = state.currentSong;
-    const evals = state.sessionEvaluations;
-    if (evals.length === 0) return;
-
-    const validHits = evals.filter((e) => !e.isWrongPitch);
-    const wrongEvents = evals.filter((e) => e.isWrongPitch);
-
-    const pitchAccuracy = Math.round(
-      (validHits.length / Math.max(1, validHits.length + wrongEvents.length)) * 100
-    );
-
-    const timingScores = validHits.map((e) => {
-      const ad = Math.abs(e.deltaMs);
-      if (ad <= 25) return 100;
-      if (ad <= 60) return 86;
-      if (ad <= 110) return 68;
-      return 45;
-    });
-    const timingPrecision =
-      timingScores.length > 0
-        ? Math.round(timingScores.reduce((a, b) => a + b, 0) / timingScores.length)
-        : 85;
-
-    const rhHits = validHits.filter((e) => e.hand === 'right');
-    const lhHits = validHits.filter((e) => e.hand === 'left');
-    const avgRhVelocity =
-      rhHits.length > 0
-        ? Math.round(rhHits.reduce((a, b) => a + b.actualVelocity, 0) / rhHits.length)
-        : 84;
-    const avgLhVelocity =
-      lhHits.length > 0
-        ? Math.round(lhHits.reduce((a, b) => a + b.actualVelocity, 0) / lhHits.length)
-        : 60;
-
-    // Score Dynamic Control based on target velocity accuracy & RH > LH voicing balance
-    const velDiffs = validHits.map((e) =>
-      Math.max(0, 100 - Math.abs(e.actualVelocity - e.expectedVelocity) * 1.4)
-    );
-    const baseDyn =
-      velDiffs.length > 0
-        ? velDiffs.reduce((a, b) => a + b, 0) / velDiffs.length
-        : 85;
-    const balanceBonus = rhHits.length > 0 && lhHits.length > 0 && avgRhVelocity > avgLhVelocity ? 6 : 0;
-    const dynamicControlScore = Math.min(100, Math.round(baseDyn + balanceBonus));
-
-    const overallScore = Math.round(
-      pitchAccuracy * 0.45 + timingPrecision * 0.35 + dynamicControlScore * 0.2
-    );
-
-    const meanDeltaMs =
-      validHits.length > 0
-        ? Math.round(validHits.reduce((a, b) => a + b.deltaMs, 0) / validHits.length)
-        : 0;
-
-    // Build Timing Drift Histogram (-90ms to +90ms)
-    const buckets = [
-      { label: '<-60ms (Rush)', min: -9999, max: -60, count: 0 },
-      { label: '-60..-25ms', min: -60, max: -25, count: 0 },
-      { label: '±25ms (Perfect)', min: -25, max: 25, count: 0 },
-      { label: '+25..+60ms', min: 25, max: 60, count: 0 },
-      { label: '>+60ms (Drag)', min: 60, max: 9999, count: 0 },
-    ];
-    for (const h of validHits) {
-      const b = buckets.find((bk) => h.deltaMs >= bk.min && h.deltaMs <= bk.max);
-      if (b) b.count++;
-    }
-
-    // Identify Problem Spots by Measure
-    const measureStats = new Map<number, { errors: number; delays: number[] }>();
-    for (const ev of evals) {
-      const st = measureStats.get(ev.measure) || { errors: 0, delays: [] };
-      if (ev.isWrongPitch || ev.timingClass === 'missed') st.errors++;
-      if (ev.transitionDelayMs) st.delays.push(ev.transitionDelayMs);
-      else st.delays.push(Math.abs(ev.deltaMs));
-      measureStats.set(ev.measure, st);
-    }
-
-    const problemSpots: ProblemSpot[] = [];
-    for (const [m, st] of measureStats.entries()) {
-      const avgDelay =
-        st.delays.length > 0
-          ? Math.round(st.delays.reduce((a, b) => a + b, 0) / st.delays.length)
-          : 0;
-      if (st.errors > 0 || avgDelay > 65) {
-        problemSpots.push({
-          measureStart: m,
-          measureEnd: Math.min(song.totalMeasures, m + 1),
-          reason:
-            st.errors > 0
-              ? `${st.errors} pitch slip(s) & +${avgDelay}ms transition hesitation`
-              : `+${avgDelay}ms chord transition / finger-crossing delay`,
-          avgDelayMs: avgDelay,
-          errorCount: st.errors,
-          recommendedBpm: Math.max(50, Math.round(song.bpm * 0.75)),
-        });
-      }
-    }
-    problemSpots.sort((a, b) => b.errorCount * 100 + b.avgDelayMs - (a.errorCount * 100 + a.avgDelayMs));
-
-    // Generate 3 specific, actionable AI Coach Prescriptions (Module F.4)
-    const prescriptions: PracticeSessionRecord['prescriptions'] = [];
-
-    if (problemSpots.length > 0) {
-      const top = problemSpots[0];
-      prescriptions.push({
-        title: `Isolate Measures ${top.measureStart}–${top.measureEnd} (${top.reason})`,
-        description: `Launch a targeted A–B loop drill at ${top.recommendedBpm} BPM with Auto-Ramp Speed Trainer enabled to smooth out this transition.`,
-        measureStart: top.measureStart,
-        measureEnd: top.measureEnd,
-        targetBpm: top.recommendedBpm,
-      });
-    } else {
-      prescriptions.push({
-        title: `Mastery Speed Challenge (Measures 1–${song.totalMeasures})`,
-        description: `Zero problem spots flagged! Loop the full piece starting at ${Math.round(song.bpm * 1.05)} BPM to build concert-tempo security.`,
-        measureStart: 1,
-        measureEnd: song.totalMeasures,
-        targetBpm: Math.round(song.bpm * 1.05),
-      });
-    }
-
-    if (lhHits.length > 0 && avgLhVelocity > avgRhVelocity - 10) {
-      prescriptions.push({
-        title: `Voicing & Hand Balance Drill (LH ${avgLhVelocity} vs RH ${avgRhVelocity})`,
-        description: `Your Left-Hand accompaniment velocity averaged ${avgLhVelocity}, nearly matching your Right-Hand melody (${avgRhVelocity}). Practice Measures 1–2 aiming for LH ~55 and RH ~88.`,
-        measureStart: 1,
-        measureEnd: Math.min(2, song.totalMeasures),
-        targetBpm: Math.round(song.bpm * 0.85),
-      });
-    } else {
-      prescriptions.push({
-        title: `Blind-Mode Sight-Reading Challenge`,
-        description: `Your hand balance was well controlled (RH ${avgRhVelocity} / LH ${avgLhVelocity}). Re-run Measures 1–${Math.min(4, song.totalMeasures)} in Blind Notation Mode to cement muscle memory.`,
-        measureStart: 1,
-        measureEnd: Math.min(4, song.totalMeasures),
-        targetBpm: song.bpm,
-      });
-    }
-
-    prescriptions.push({
-      title:
-        meanDeltaMs > 20
-          ? `Rhythm Tightening Drill (Avg +${meanDeltaMs}ms Late Drag)`
-          : meanDeltaMs < -20
-          ? `Pulse Stabilization Drill (Avg ${meanDeltaMs}ms Early Rush)`
-          : `Micro-Timing Precision Polish (Avg ${meanDeltaMs >= 0 ? '+' : ''}${meanDeltaMs}ms)`,
-      description:
-        meanDeltaMs > 20
-          ? `You tended to drag slightly behind the beat (+${meanDeltaMs}ms). Practice in Strict Tempo Mode with the metronome active.`
-          : meanDeltaMs < -20
-          ? `You tended to rush ahead of the beat (${meanDeltaMs}ms). Breathe and lock into the downbeat click.`
-          : `Excellent rhythmic centering (${meanDeltaMs >= 0 ? '+' : ''}${meanDeltaMs}ms mean drift). Ready for the next stage or arrangement tier!`,
-      measureStart: 1,
-      measureEnd: song.totalMeasures,
-      targetBpm: song.bpm,
-    });
-
-    const record: PracticeSessionRecord = {
-      songId: song.id,
-      songTitle: song.title,
-      stageId: song.stageId,
+    const record = summarizeSession({
+      song: state.currentSong,
       tier: state.currentTier,
       practiceMode: state.practiceMode,
+      tempoMultiplier: state.tempoMultiplier,
+      evaluations: state.sessionEvaluations,
+      keyErrorCounts: state.keyErrorCounts,
+      keyHitCounts: state.keyHitCounts,
       timestamp: Date.now(),
-      durationSeconds: Math.round(song.durationSeconds / state.tempoMultiplier),
-      overallScore,
-      pitchAccuracy,
-      timingPrecision,
-      dynamicControlScore,
-      avgRhVelocity,
-      avgLhVelocity,
-      meanDeltaMs,
-      timingHistogram: buckets.map((b) => ({ bucketLabel: b.label, count: b.count })),
-      keyErrorCounts: { ...state.keyErrorCounts },
-      keyHitCounts: { ...state.keyHitCounts },
-      problemSpots: problemSpots.slice(0, 4),
-      prescriptions,
-    };
+    });
+    if (!record) return;
 
     await recordSessionToDb(record);
+    // Credit the lesson: a path song maps by song id; a generated song (pattern lesson) by the lesson that built it.
+    const lessonId = LESSON_BY_SONG_ID[record.songId]?.id ?? (record.songId.startsWith('pattern:') ? state.currentLessonId : null);
+    if (lessonId) {
+      await get().recordLessonResult(lessonId, record.overallScore);
+    }
     await get().loadPersistedData();
     set({
       lastCompletedSession: record,
       showReportModal: true,
     });
   },
+
+  recordLessonResult: async (lessonId, score) => {
+    const lesson = LESSON_BY_ID[lessonId];
+    if (!lesson) return;
+    const state = get();
+    const next = applyAttempt(state.lessonProgress[lessonId], lesson, score, Date.now());
+    try {
+      await db.lessonProgress.put(next);
+    } catch {
+      // IndexedDB unavailable: keep the in-memory copy
+    }
+    const lessonProgress = { ...state.lessonProgress, [lessonId]: next };
+    set({
+      lessonProgress,
+      lessonStatuses: computeLessonStatuses(LEVELS, lessonProgress, {
+        unlockAll: state.uiComplexityMode === 'pro',
+      }),
+    });
+  },
+
+  openLesson: (lessonId) => {
+    const lesson = LESSON_BY_ID[lessonId];
+    if (!lesson || lesson.status !== 'ready') return;
+    if (lesson.type === 'score') {
+      get().selectSong(lesson.songId);
+      return;
+    }
+    audioEngine.panic();
+    set((s) => ({
+      activeLesson: lesson,
+      activeLessonNonce: s.activeLessonNonce + 1,
+      currentLessonId: lesson.id,
+      lessonResult: null,
+      isPlaying: false,
+      waitingForNoteIds: [],
+      waitStartedAtMs: null,
+      showLessonBriefingModal: false,
+      activeTab: 'lesson',
+    }));
+  },
+
+  startLesson: (lessonId) => {
+    get().openLesson(lessonId);
+    set({ showLessonBriefingModal: false });
+  },
+
+  finishActiveLesson: async (score, summary) => {
+    const lesson = get().activeLesson;
+    if (!lesson) return;
+    await get().recordLessonResult(lesson.id, score);
+    const rounded = Math.round(score);
+    set({
+      lessonResult: {
+        lessonId: lesson.id,
+        score: rounded,
+        passed: rounded >= passScoreOf(lesson),
+        mastered: rounded >= masterScoreOf(lesson),
+        summary,
+      },
+    });
+  },
+
+  closeLessonResult: () => set({ lessonResult: null }),
+
+  playGeneratedSong: (song, lessonId) => {
+    const state = get();
+    // Keep generated songs in memory only; they are rebuilt from the lesson each time.
+    const songs = [...state.songs.filter((s) => s.id !== song.id), song];
+    set({ songs, activeLesson: null, lessonResult: null });
+    get().selectSong(song.id);
+    set({ currentLessonId: lessonId, showLessonBriefingModal: false });
+  },
+
+  completeFirstRun: async () => {
+    const profile = { ...get().userProfile, hasCompletedFirstRun: true };
+    set({ showFirstRun: false, userProfile: profile, activeTab: 'today' });
+    try {
+      await db.profile.put(profile);
+    } catch {
+      // IndexedDB unavailable: the flag lives for this session only
+    }
+  },
+
+  replayFirstRun: () => set({ showFirstRun: true }),
 
   closeReportModal: () => set({ showReportModal: false }),
 
@@ -1204,7 +1162,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       songs: updatedSongs,
       currentSong: song,
       currentTier: 'beginner',
-      activeTab: 'studio',
+      activeTab: 'lesson',
       currentTime: 0,
       isPlaying: false,
       loopEnabled: false,
@@ -1217,11 +1175,12 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   loadPersistedData: async () => {
     try {
-      const [customSongs, sessions, masteryList, profile] = await Promise.all([
+      const [customSongs, sessions, masteryList, profile, progressRows] = await Promise.all([
         db.customSongs.toArray(),
         db.sessions.orderBy('timestamp').reverse().limit(50).toArray(),
         db.mastery.toArray(),
         db.profile.get('default'),
+        db.lessonProgress.toArray(),
       ]);
 
       const masteryMap: Record<string, SongMasteryRecord> = {};
@@ -1230,18 +1189,33 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       }
 
       const mergedSongs = [
-        ...BUILTIN_SONGS,
-        ...customSongs.filter((cs) => !BUILTIN_SONGS.some((b) => b.id === cs.id)),
+        ...ALL_SONGS,
+        ...customSongs.filter((cs) => !ALL_SONGS.some((b) => b.id === cs.id)),
       ];
+
+      // First run after the lesson model arrived: seed lesson progress from song mastery
+      // so existing practice history counts toward the path.
+      let lessonProgress: ProgressMap = Object.fromEntries(progressRows.map((r) => [r.lessonId, r]));
+      if (progressRows.length === 0 && masteryList.length > 0) {
+        lessonProgress = progressFromSongMastery(LEVELS, masteryMap);
+        const seeded = Object.values(lessonProgress);
+        if (seeded.length > 0) await db.lessonProgress.bulkPut(seeded);
+      }
 
       set({
         songs: mergedSongs,
         sessionHistory: sessions,
         masteryMap,
         userProfile: profile || DEFAULT_PROFILE,
+        lessonProgress,
+        lessonStatuses: computeLessonStatuses(LEVELS, lessonProgress, {
+          unlockAll: get().uiComplexityMode === 'pro',
+        }),
+        showFirstRun: shouldShowFirstRun({ profile, sessionCount: sessions.length }),
       });
     } catch {
-      // Fallback if IndexedDB is unavailable in private context
+      // IndexedDB unavailable (private window): still introduce a first-time user
+      set({ showFirstRun: true });
     }
   },
 }));

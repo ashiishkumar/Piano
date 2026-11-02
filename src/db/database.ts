@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import { PracticeSessionRecord, SongScore } from '../types/music';
+import { LessonProgressRecord } from '../engine/progress';
 
 export interface SongMasteryRecord {
   songId: string;
@@ -20,6 +21,8 @@ export interface UserProfileRecord {
   totalPracticeSeconds: number;
   cumulativeKeyErrors: Record<number, number>;
   cumulativeKeyHits: Record<number, number>;
+  /** Set once the introduction has been completed or skipped */
+  hasCompletedFirstRun?: boolean;
 }
 
 class VirtuosoDatabase extends Dexie {
@@ -27,6 +30,7 @@ class VirtuosoDatabase extends Dexie {
   customSongs!: Table<SongScore, string>;
   mastery!: Table<SongMasteryRecord, string>;
   profile!: Table<UserProfileRecord, string>;
+  lessonProgress!: Table<LessonProgressRecord, string>;
 
   constructor() {
     super('VirtuosoStudioDB');
@@ -35,6 +39,14 @@ class VirtuosoDatabase extends Dexie {
       customSongs: 'id, title, stageId, category',
       mastery: 'songId, bestScore, lastPlayedAt',
       profile: 'id',
+    });
+    // v2: per-lesson progress for the learning path (lesson model, Sprint 1)
+    this.version(2).stores({
+      sessions: '++id, songId, stageId, timestamp, overallScore',
+      customSongs: 'id, title, stageId, category',
+      mastery: 'songId, bestScore, lastPlayedAt',
+      profile: 'id',
+      lessonProgress: 'lessonId, lastAttemptAt',
     });
   }
 }
@@ -99,6 +111,7 @@ export async function recordSessionToDb(session: PracticeSessionRecord): Promise
   const earnedXp = Math.round(session.overallScore * 1.5 + session.durationSeconds * 0.5);
 
   await db.profile.put({
+    ...profile,
     id: 'default',
     xp: profile.xp + earnedXp,
     streakDays,

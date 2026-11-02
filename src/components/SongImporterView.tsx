@@ -145,7 +145,7 @@ export const SongImporterView: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-300">
-                1. Choose Your Current Curriculum Stage Pace (Don&apos;t Rush!)
+                1. Which level are you on? The song is arranged for that pace
               </h2>
               <p className="text-xs text-slate-400">
                 Importing into Stage 1 or 2 keeps the Beginner tier strictly 1-Hand (Right-Hand melody only) and slows down fast tempos so you can enjoy internet songs at your exact skill level.
@@ -230,7 +230,8 @@ export const SongImporterView: React.FC = () => {
                   <h2 className="text-base font-bold text-white">{lastImported.title}</h2>
                   <p className="text-xs text-slate-400">
                     {lastImported.bpm} BPM • {lastImported.timeSignature[0]}/
-                    {lastImported.timeSignature[1]} • {lastImported.totalMeasures} Measures • Mapped to PSR-E373 (MIDI 36–96)
+                    {lastImported.timeSignature[1]} • {lastImported.totalMeasures} measures • key{' '}
+                    <span className="text-emerald-300 font-semibold">{lastImported.keySignature}</span> (detected from the notes; Sa = {lastImported.keySignature.replace(/m$/, '')}) • fitted to 61 keys
                   </p>
                 </div>
               </div>

@@ -167,11 +167,11 @@ export const SessionReportModal: React.FC = () => {
           <button
             onClick={() => {
               closeReportModal();
-              setActiveTab('analytics');
+              setActiveTab('progress');
             }}
             className="px-3.5 py-2 rounded-xl bg-studio-900 border border-white/15 text-xs font-medium text-slate-200 hover:text-white"
           >
-            Open Full Analytics
+            See all progress
           </button>
 
           <div className="flex items-center gap-2">
@@ -201,7 +201,7 @@ export const SessionReportModal: React.FC = () => {
               <button
                 onClick={() => {
                   closeReportModal();
-                  setActiveTab('curriculum');
+                  setActiveTab('path');
                 }}
                 className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400"
               >

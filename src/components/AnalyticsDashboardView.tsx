@@ -209,7 +209,7 @@ export const AnalyticsDashboardView: React.FC = () => {
                 <span>5-Axis Conservatory Skill Radar</span>
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Computed from your real-time MIDI pitch, micro-timing, velocity voicing, and two-hand coordination telemetry.
+                Computed from every note you played: pitch, timing, touch, and how your hands worked together.
               </p>
             </div>
 
@@ -424,7 +424,7 @@ export const AnalyticsDashboardView: React.FC = () => {
                 Automated AI Coach Practice Prescriptions
               </h2>
               <p className="text-xs text-slate-400">
-                Actionable loop drills generated directly from your latest session telemetry. Click any prescription to jump straight into a targeted A–B Speed Trainer loop.
+                Loop drills built from your latest session. Click any prescription to jump straight into a targeted A–B Speed Trainer loop.
               </p>
             </div>
           </div>

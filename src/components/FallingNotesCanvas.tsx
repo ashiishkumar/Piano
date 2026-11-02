@@ -279,7 +279,9 @@ function drawHighway(
 
   // 6. Hit-Burst Particle Feedback (Perfect / Good / Early / Late)
   for (const burst of state.hitBursts) {
-    const ageMs = nowPerf - burst.timestamp;
+    // rAF timestamps can trail performance.now() by a frame, so a brand-new burst
+    // would otherwise have a negative age and a negative ring radius.
+    const ageMs = Math.max(0, nowPerf - burst.timestamp);
     if (ageMs > 750) continue;
 
     const geom = geometryMap.get(burst.midi);

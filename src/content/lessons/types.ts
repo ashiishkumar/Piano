@@ -27,9 +27,9 @@ export const PC = { C: 0, Cs: 1, D: 2, Ds: 3, E: 4, F: 5, Fs: 6, G: 7, Gs: 8, A:
 
 /** MIDI numbers for the middle octave and neighbours, for highlights and try-its. */
 export const K = {
-  C3: 48, D3: 50, E3: 52, F3: 53, G3: 55, A3: 57, B3: 59,
+  C3: 48, Cs3: 49, D3: 50, Ds3: 51, E3: 52, F3: 53, Fs3: 54, G3: 55, Gs3: 56, A3: 57, As3: 58, B3: 59,
   C4: 60, Cs4: 61, D4: 62, Ds4: 63, E4: 64, F4: 65, Fs4: 66, G4: 67, Gs4: 68, A4: 69, As4: 70, B4: 71,
-  C5: 72, D5: 74, E5: 76, F5: 77, Fs5: 78, G5: 79, A5: 81, B5: 83, C6: 84,
+  C5: 72, Cs5: 73, D5: 74, Ds5: 75, E5: 76, F5: 77, Fs5: 78, G5: 79, Gs5: 80, A5: 81, As5: 82, B5: 83, C6: 84,
 } as const;
 
 /** All MIDI notes of one pitch class across the 61-key range (36–96). */

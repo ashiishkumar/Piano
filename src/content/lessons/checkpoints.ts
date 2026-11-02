@@ -1,60 +1,69 @@
 import { CheckpointPayload } from './types';
 
 /**
- * Checkpoints gate the next level. Each names the lessons that must be passed
- * (by stable lesson id) and the score each needs.
+ * PIX Series Zero to Hero Piano Course Checkpoints
+ * Each checkpoint verifies mastery of the key lessons in its module.
  */
 
 export const RHYTHM_CHECKPOINT: CheckpointPayload = {
   type: 'checkpoint',
-  title: 'Rhythm mastery test',
-  subtitle: 'Both rhythm drills at 75 or better',
+  title: '2I · Metronome & Rhythm Mastery Checkpoint',
+  subtitle: 'Pass Note Values (2F), Rhythm Tap (2G), and the 4 Rhythm Formats Piano Drill at 75%+.',
   track: 'play',
   durationMinutes: 8,
   source: 'course 2I',
-  objectives: ['Tap note values and rests in time with a click, twice through, with no stray taps'],
+  objectives: [
+    'Play Whole, Half, Quarter, and Eighth notes accurately against the metronome click',
+  ],
   passAll: true,
   parts: [
     { lessonId: 'note-values', passScore: 75 },
     { lessonId: 'playing-in-rhythm', passScore: 75 },
+    { lessonId: 'zth-2g-rhythm-formats', passScore: 75 },
   ],
 };
 
 export const RIGHT_HAND_CHECKPOINT: CheckpointPayload = {
   type: 'checkpoint',
-  title: 'Right-hand checkpoint',
-  subtitle: 'Every right-hand song in Levels 1 and 2 at 75 or better. Unlocks Level 3.',
+  title: '2J · Module 2 Right-Hand Mastery Checkpoint',
+  subtitle: 'Pass Alankars (2B), Happy Birthday (2C), Top #4 RH Drills (2E), and Advanced RH Octaves/Thirds (2J) at 75%+.',
   track: 'play',
   durationMinutes: 10,
   source: 'course 2J',
-  objectives: ['Play the five-finger home, the alankars, the scale and both songs with the right hand, in time'],
+  objectives: [
+    'Play Sargam Alankars in C# and C, the Top #4 Right-Hand Exercises, and the Final Stage RH Workout in time',
+  ],
   passAll: true,
   parts: [
-    { lessonId: 'stage1-five-finger-home', passScore: 75 },
-    { lessonId: 'stage1-alankar-1-steps', passScore: 75 },
-    { lessonId: 'stage1-alankar-2-skips', passScore: 75 },
-    { lessonId: 'gen-alankars-3-6', passScore: 75 },
-    { lessonId: 'stage1-jana-gana-5note', passScore: 75 },
-    { lessonId: 'stage2-thumb-tuck-drill', passScore: 75 },
-    { lessonId: 'stage1-sargam-scale', passScore: 75 },
-    { lessonId: 'stage1-om-shanti-om', passScore: 75 },
-    { lessonId: 'stage1-happy-birthday', passScore: 75 },
+    { lessonId: 'zth-2b-alankars-kali-ek', passScore: 75 },
+    { lessonId: 'zth-2b-alankars-safed-ek', passScore: 75 },
+    { lessonId: 'zth-2c-happy-birthday', passScore: 75 },
+    { lessonId: 'zth-2e-rh-ex1', passScore: 75 },
+    { lessonId: 'zth-2e-rh-ex2', passScore: 75 },
+    { lessonId: 'zth-2e-rh-ex3', passScore: 75 },
+    { lessonId: 'zth-2e-rh-ex4', passScore: 75 },
+    { lessonId: 'zth-2j-master-rh', passScore: 75 },
   ],
 };
 
 export const THEORY_CHECKPOINT: CheckpointPayload = {
   type: 'checkpoint',
-  title: 'Theory checkpoint',
-  subtitle: 'Scales, triads, chord types and relative keys. Unlocks Level 4.',
+  title: '3F · Module 3 Scales, Chords & Circle of Fifths Checkpoint',
+  subtitle: 'Pass Major & Minor Scales (3A–3B), Chords (3C), Inversions (3D), Advanced Chords (3E) & Circle of Fifths (3F) at 75%+.',
   track: 'theory',
   durationMinutes: 8,
-  source: 'plan',
-  objectives: ['Build a major and a minor scale from the formula', 'Hold the six triads of C and the common chord types', 'Name relative keys without hesitation'],
+  source: 'course 3F',
+  objectives: [
+    'Build any Major or Minor scale from the W-W-H-W-W-W-H and W-H-W-W-H-W-W formulas',
+    'Play Major (4-3) and Minor (3-4) triads, inversions, and sus2/sus4/7th/add9 chords',
+    'Answer the Circle of Fifths and Relative Minor quiz at 75%+',
+  ],
   passAll: true,
   parts: [
     { lessonId: 'major-scale-formula', passScore: 75 },
     { lessonId: 'natural-minor-formula', passScore: 75 },
     { lessonId: 'building-triads', passScore: 75 },
+    { lessonId: 'zth-3d-chord-inversions', passScore: 75 },
     { lessonId: 'chord-types', passScore: 75 },
     { lessonId: 'relative-keys-quiz', passScore: 75 },
   ],

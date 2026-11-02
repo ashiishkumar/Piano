@@ -3,11 +3,11 @@ import { ALL_LESSONS, LESSON_BY_ID, LESSON_BY_SONG_ID, LEVELS } from './path';
 import { ALL_SONGS } from './songs';
 
 describe('learning path', () => {
-  it('has 10 levels and 94 lessons with unique stable ids and positional codes', () => {
+  it('has 10 modules and 101 lessons with unique stable ids and positional codes', () => {
     expect(LEVELS).toHaveLength(10);
-    expect(ALL_LESSONS).toHaveLength(94);
-    expect(new Set(ALL_LESSONS.map((l) => l.id)).size).toBe(94);
-    expect(new Set(ALL_LESSONS.map((l) => l.code)).size).toBe(94);
+    expect(ALL_LESSONS).toHaveLength(101);
+    expect(new Set(ALL_LESSONS.map((l) => l.id)).size).toBe(101);
+    expect(new Set(ALL_LESSONS.map((l) => l.code)).size).toBe(101);
     for (const l of ALL_LESSONS) expect(l.id, l.id).toMatch(/^[a-z0-9][a-z0-9-]*$/);
   });
 
@@ -27,16 +27,13 @@ describe('learning path', () => {
     for (const id of songIds) expect(LESSON_BY_ID[id]?.type).toBe('score');
   });
 
-  it('marks the keyboard track with 17 lessons', () => {
-    expect(ALL_LESSONS.filter((l) => l.track === 'keyboard')).toHaveLength(17);
+  it('marks the keyboard track with 7 lessons', () => {
+    expect(ALL_LESSONS.filter((l) => l.track === 'keyboard')).toHaveLength(7);
   });
 
-  it('levels 1 to 4 and 6 to 8 are complete', () => {
-    const planned = [1, 2, 3, 4, 6, 7, 8]
-      .map((n) => LEVELS[n - 1])
-      .flatMap((l) => l.lessons)
-      .filter((l) => l.status === 'planned');
-    expect(planned.map((l) => l.id)).toEqual(['arpeggio-and-harmony-functions']);
+  it('all 10 modules (1 to 10) are 100% complete with zero planned stubs', () => {
+    const planned = LEVELS.flatMap((l) => l.lessons).filter((l) => l.status === 'planned');
+    expect(planned).toEqual([]);
   });
 
   it('checkpoints reference earlier ready lessons', () => {

@@ -118,9 +118,10 @@ describe('authored lessons', () => {
     }
   });
 
-  it('counts: 72 ready lessons, 49 of them non-song', () => {
-    expect(ready).toHaveLength(72);
-    expect(ready.filter((l) => l.type !== 'score')).toHaveLength(49);
+  it('counts: 101 ready lessons, 53 of them non-song and 48 of them score songs/exercises', () => {
+    expect(ready).toHaveLength(101);
+    expect(ready.filter((l) => l.type !== 'score')).toHaveLength(53);
+    expect(ready.filter((l) => l.type === 'score')).toHaveLength(48);
   });
 
   it('every song lesson plays notes inside the 61-key range with sane durations', () => {

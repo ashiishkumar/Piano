@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Check, ChevronDown, ChevronRight, Lock, Play, Star } from 'lucide-react';
+import { BookOpen, Check, ChevronDown, ChevronRight, Lock, Play, Star, Unlock } from 'lucide-react';
 import { useStudioStore } from '../store/useStudioStore';
 import { LEVELS } from '../content/path';
 import { summarizeLevels, LessonStatus } from '../engine/progress';
@@ -16,7 +16,12 @@ const TRACK_COLOUR: Record<Track, string> = {
 
 const TRACKS: Track[] = ['play', 'theory', 'chords', 'ear', 'keyboard', 'perform'];
 
-const StatusMark: React.FC<{ status: LessonStatus; planned: boolean; current: boolean }> = ({ status, planned, current }) => {
+const StatusMark: React.FC<{ status: LessonStatus; planned: boolean; current: boolean; unlockedByCompanion: boolean }> = ({
+  status,
+  planned,
+  current,
+  unlockedByCompanion,
+}) => {
   const base = 'w-7 h-7 rounded-full flex items-center justify-center shrink-0 border';
   if (planned) return <span className={`${base} border-dashed border-slate-700 text-slate-700`} aria-label="coming soon" />;
   switch (status) {
@@ -48,6 +53,13 @@ const StatusMark: React.FC<{ status: LessonStatus; planned: boolean; current: bo
         </span>
       );
     default:
+      if (unlockedByCompanion) {
+        return (
+          <span className={`${base} border-slate-600 text-slate-400`} aria-label="available">
+            <Play className="w-3 h-3" />
+          </span>
+        );
+      }
       return (
         <span className={`${base} border-slate-800 text-slate-700`} aria-label="locked">
           <Lock className="w-3 h-3" />
@@ -59,10 +71,12 @@ const StatusMark: React.FC<{ status: LessonStatus; planned: boolean; current: bo
 export const PathView: React.FC = () => {
   const { lessonStatuses, lessonProgress, openLesson, currentLessonId } = useStudioStore();
   const [trackFilter, setTrackFilter] = useState<Track | null>(null);
+  // Video Companion Mode lets the student jump directly to whichever video chapter they just watched.
+  const [companionFreeJump, setCompanionFreeJump] = useState<boolean>(true);
 
   const summaries = useMemo(() => summarizeLevels(LEVELS, lessonProgress, lessonStatuses), [lessonProgress, lessonStatuses]);
 
-  // The level holding the next available lesson starts expanded; locked levels start collapsed.
+  // The level holding the next available lesson starts expanded; in companion mode all modules can be expanded easily.
   const defaultOpen = useMemo(() => {
     const open: Record<number, boolean> = {};
     let firstIncomplete: number | null = null;
@@ -93,34 +107,53 @@ export const PathView: React.FC = () => {
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
         <div className="flex items-end justify-between flex-wrap gap-4">
           <div>
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono text-[11px] uppercase tracking-wider mb-2">
+              <BookOpen className="w-3.5 h-3.5" />
+              PIX Series · Zero to Hero Piano Course Companion (Chapters 1A–10C)
+            </div>
             <h1 className="font-display text-4xl text-white">Your path</h1>
             <p className="text-sm text-slate-400 mt-1">
-              Ten levels. Finish a level to open the next. Inside a level, go in any order.
+              10 Modules · 101 Interactive Lessons & Songs mapped 1-to-1 to Jash Gotawala’s Zero to Hero video course & e-book.
             </p>
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap" role="group" aria-label="Filter by track">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={() => setTrackFilter(null)}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
-                trackFilter === null ? 'bg-white/10 border-white/20 text-white' : 'border-white/10 text-slate-400 hover:text-slate-200'
+              onClick={() => setCompanionFreeJump((v) => !v)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium border transition-colors ${
+                companionFreeJump
+                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                  : 'border-white/10 text-slate-400 hover:text-slate-200'
+              }`}
+              title="When enabled, you can open any chapter across all 10 Modules right after watching its video."
+            >
+              {companionFreeJump ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+              {companionFreeJump ? 'Video Companion: All Chapters Unlocked' : 'Strict Sequential Lock'}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap" role="group" aria-label="Filter by track">
+          <button
+            onClick={() => setTrackFilter(null)}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+              trackFilter === null ? 'bg-white/10 border-white/20 text-white' : 'border-white/10 text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            All
+          </button>
+          {TRACKS.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTrackFilter(trackFilter === t ? null : t)}
+              aria-pressed={trackFilter === t}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+                trackFilter === t ? 'bg-white/10 border-white/20 text-white' : 'border-white/10 text-slate-400 hover:text-slate-200'
               }`}
             >
-              All
+              <span className={`w-2 h-2 rounded-full ${TRACK_COLOUR[t]}`} />
+              {TRACK_LABELS[t]}
             </button>
-            {TRACKS.map((t) => (
-              <button
-                key={t}
-                onClick={() => setTrackFilter(trackFilter === t ? null : t)}
-                aria-pressed={trackFilter === t}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
-                  trackFilter === t ? 'bg-white/10 border-white/20 text-white' : 'border-white/10 text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <span className={`w-2 h-2 rounded-full ${TRACK_COLOUR[t]}`} />
-                {TRACK_LABELS[t]}
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
 
         <ol className="relative">
@@ -132,6 +165,7 @@ export const PathView: React.FC = () => {
             const open = isOpen(level.id);
             const lessons = level.lessons.filter(visible);
             const progressPct = sum.readyCount ? Math.round((sum.passedCount / sum.readyCount) * 100) : 0;
+            const levelUnlocked = sum.unlocked || companionFreeJump;
 
             return (
               <li key={level.id} className="relative pl-12 pb-8 last:pb-0">
@@ -140,7 +174,7 @@ export const PathView: React.FC = () => {
                   className={`absolute left-0 top-1 w-8 h-8 rounded-full border-2 flex items-center justify-center font-mono text-xs font-bold ${
                     sum.complete
                       ? 'bg-emerald-500 border-emerald-400 text-slate-950'
-                      : sum.unlocked
+                      : levelUnlocked
                       ? 'bg-studio-900 border-emerald-400 text-emerald-300'
                       : 'bg-studio-950 border-slate-700 text-slate-600'
                   }`}
@@ -157,10 +191,10 @@ export const PathView: React.FC = () => {
                   <div className="flex items-baseline justify-between gap-4">
                     <div className="min-w-0">
                       <div className="font-mono text-[11px] uppercase tracking-wider text-slate-500">
-                        Level {level.id}
-                        {!sum.unlocked && ` · finish Level ${level.id - 1} to unlock`}
+                        Level {level.id} · PIX Series Module {level.id}
+                        {!levelUnlocked && ` · finish Level ${level.id - 1} to unlock`}
                       </div>
-                      <h2 className={`font-display text-2xl leading-snug ${sum.unlocked ? 'text-white' : 'text-slate-500'}`}>{level.title}</h2>
+                      <h2 className={`font-display text-2xl leading-snug ${levelUnlocked ? 'text-white' : 'text-slate-500'}`}>{level.title}</h2>
                       <p className="text-sm text-slate-400">{level.subtitle}</p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0 text-xs font-mono text-slate-500">
@@ -184,9 +218,10 @@ export const PathView: React.FC = () => {
                     {lessons.map((l) => {
                       const planned = l.status === 'planned';
                       const status = lessonStatuses[l.id] ?? 'locked';
-                      const clickable = !planned && status !== 'locked';
+                      const clickable = !planned && (status !== 'locked' || companionFreeJump);
                       const current = l.id === nextId;
                       const prog = lessonProgress[l.id];
+                      const chapterTag = l.source?.startsWith('course ') ? l.source.replace('course ', 'Ch. ') : null;
                       return (
                         <li key={l.id}>
                           <button
@@ -201,13 +236,19 @@ export const PathView: React.FC = () => {
                                 : 'border-transparent'
                             } ${clickable ? 'hover:bg-white/[0.06] hover:border-white/10' : 'cursor-default'} ${planned ? 'opacity-60' : ''}`}
                           >
-                            <StatusMark status={status} planned={planned} current={current} />
-                            <span className="font-mono text-xs text-slate-500 w-8 shrink-0">{l.code}</span>
+                            <StatusMark
+                              status={status}
+                              planned={planned}
+                              current={current}
+                              unlockedByCompanion={companionFreeJump && status === 'locked'}
+                            />
+                            <span className="font-mono text-xs text-slate-500 w-9 shrink-0">{l.code}</span>
                             <span className="flex-1 min-w-0">
-                              <span className={`block text-sm truncate ${planned || status === 'locked' ? 'text-slate-400' : 'text-slate-100'}`}>
+                              <span className={`block text-sm truncate ${planned || !clickable ? 'text-slate-400' : 'text-slate-100'}`}>
                                 {l.title}
                               </span>
                               <span className="block text-[11px] text-slate-500 truncate">
+                                {chapterTag ? `${chapterTag} · ` : ''}
                                 {LESSON_TYPE_LABELS[l.type]} · {l.durationMinutes} min
                                 {planned && ' · coming soon'}
                                 {prog && ` · best ${prog.bestScore}`}
@@ -222,7 +263,7 @@ export const PathView: React.FC = () => {
                       );
                     })}
                     {lessons.length === 0 && (
-                      <li className="text-xs text-slate-500 px-3 py-2">No {trackFilter ? TRACK_LABELS[trackFilter] : ''} lessons in this level.</li>
+                      <li className="text-xs text-slate-500 px-3 py-2">No {trackFilter ? TRACK_LABELS[trackFilter] : ''} lessons in this module.</li>
                     )}
                   </ul>
                 )}

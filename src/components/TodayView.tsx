@@ -70,15 +70,21 @@ export const TodayView: React.FC = () => {
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-10">
         {/* Greeting and the numbers that matter */}
         <div className="flex items-end justify-between gap-6 flex-wrap">
-          <h1 className="font-display text-4xl text-white leading-tight">
-            {greetingFor(new Date())}.
-            {next && (
-              <>
-                <br />
-                <span className="text-slate-400">Next up: {shortTitle(next.title)}.</span>
-              </>
-            )}
-          </h1>
+          <div>
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono text-[11px] uppercase tracking-wider mb-3">
+              <BookOpen className="w-3.5 h-3.5" />
+              PIX Series · Zero to Hero Video Companion (10 Modules · 101 Lessons)
+            </div>
+            <h1 className="font-display text-4xl text-white leading-tight">
+              {greetingFor(new Date())}.
+              {next && (
+                <>
+                  <br />
+                  <span className="text-slate-400">Next up: {shortTitle(next.title)}.</span>
+                </>
+              )}
+            </h1>
+          </div>
           <dl className="flex items-center gap-5 font-mono text-xs text-slate-400">
             <div className="flex items-center gap-1.5">
               <Flame className={`w-4 h-4 ${userProfile.streakDays > 1 ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}`} />
@@ -102,7 +108,7 @@ export const TodayView: React.FC = () => {
             <div className="flex flex-col md:flex-row gap-7 items-start md:items-center">
               <div className="flex-1 space-y-3 min-w-0">
                 <div className="font-mono text-[11px] uppercase tracking-wider text-emerald-400">
-                  Lesson {next.code} · Level {next.levelId}{nextLevel ? ` · ${nextLevel.title}` : ''} · {LESSON_TYPE_LABELS[next.type]} · {next.durationMinutes} min
+                  Lesson {next.code} · {nextLevel ? nextLevel.title : `Module ${next.levelId}`} · {LESSON_TYPE_LABELS[next.type]} · {next.durationMinutes} min
                 </div>
                 <h2 className="font-display text-3xl text-white leading-snug">{next.title}</h2>
                 {next.subtitle && <p className="text-sm text-slate-300">{next.subtitle}</p>}
@@ -111,7 +117,7 @@ export const TodayView: React.FC = () => {
                     Hand position for this lesson. The numbers are your fingers: 1 is the thumb.
                   </p>
                 )}
-                <div className="flex items-center gap-3 pt-1">
+                <div className="flex items-center gap-3 pt-1 flex-wrap">
                   <button
                     onClick={() => startLesson(next.id)}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-semibold text-sm hover:bg-emerald-400 transition-colors"
@@ -125,6 +131,12 @@ export const TodayView: React.FC = () => {
                   >
                     Read the briefing first
                     <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('path')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10 border border-emerald-500/20 transition-colors"
+                  >
+                    Browse all 10 Modules (1A–10C)
                   </button>
                 </div>
               </div>

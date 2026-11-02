@@ -2,55 +2,52 @@ import { ConceptPayload, K, KeyboardTaskPayload, allOfClass, labels } from './ty
 
 const SARGAM = ['Sa', 'Re', 'Ga', 'Ma', 'Pa', 'Dha', 'Ni'];
 const WHITE_C4_B4 = [K.C4, K.D4, K.E4, K.F4, K.G4, K.A4, K.B4];
+const KALI_EK_MIDIS = [K.Cs4, K.Ds4, K.F4, K.Fs4, K.Gs4, K.As4, K.C5, K.Cs5];
+const KALI_EK_FINGERS = ['2', '3', '1', '2', '3', '4', '1', '2'];
 
 export const MEET_YOUR_KEYBOARD: KeyboardTaskPayload = {
   type: 'keyboard-task',
-  title: 'Meet your PSR-E373',
-  subtitle: 'Power, volume, Portable Grand, headphones, USB TO HOST',
+  title: 'Chapter 1A: PIX Series Welcome & Keyboard Setup',
+  subtitle: 'PDF pp. 1–3 • Connect your keyboard, set Grand Piano voice & verify USB MIDI',
   track: 'keyboard',
   durationMinutes: 6,
-  source: 'spec sheet',
+  source: 'course 1A (pp. 1–3)',
   objectives: [
-    'Switch on, set the volume, and reset to a piano sound in one press',
-    'Connect the keyboard to this computer so the app can hear you',
-    'Know where the headphone and pedal sockets are',
+    'Welcome to the PIX Series Zero to Hero Piano Course interactive companion',
+    'Connect your keyboard via USB TO HOST so the app hears every key you play',
+    'Set a clean Grand Piano sound (PORTABLE GRAND) and test the Metronome',
   ],
   steps: [
     {
-      instruction: 'Hold the power button for about a second until the display lights up.',
+      instruction: 'Switch on your keyboard and set it on a sturdy stand or table in front of you.',
       panelButton: 'STANDBY_ON',
-      explanation: 'The keyboard switches itself off after 30 minutes of silence. You can change that later in FUNCTION.',
+      explanation:
+        'Welcome to Jash Gotawala’s PIX Series Zero to Hero Course! Watch each chapter video, then open the matching Chapter code (2A–10C) here to practice with live feedback.',
       verify: { kind: 'manual' },
     },
     {
       instruction:
-        'Plug the USB cable into the USB TO HOST socket on the back and into this computer. Then press any key. The keyboard chip at the top of the screen turns green when we hear you.',
+        'Plug your USB cable into the USB TO HOST socket on the back of the keyboard and into your computer/device. Then press any key.',
       panelButton: 'USB_TO_HOST',
-      explanation: 'One cable carries both the notes you play and, if you want it, the keyboard\'s own sound.',
+      explanation: 'One USB cable lets VirtuosoStudio detect your exact notes, chord shifts, rhythm timing, and touch velocity.',
       verify: { kind: 'any-note' },
     },
     {
-      instruction: 'Press PORTABLE GRAND.',
+      instruction: 'Press PORTABLE GRAND to reset your keyboard to a pure acoustic Grand Piano (Voice 001).',
       panelButton: 'PORTABLE_GRAND',
       explanation:
-        'That one button resets everything to a grand piano: voice 001, no layers, no styles. Whenever the keyboard sounds strange, press it. Over the cable it arrives as a "voice change" message, which is how we know you pressed it.',
+        'Throughout Modules 2 to 8, you should practice on a clean Piano sound (except in Module 7 Ear Training where we also use Strings).',
       verify: { kind: 'program-change' },
     },
     {
-      instruction: 'Turn MASTER VOLUME to about half way and play a few keys, soft and loud.',
+      instruction: 'Turn MASTER VOLUME to a comfortable level and play a few keys softly and firmly.',
       panelButton: 'MASTER_VOLUME',
       verify: { kind: 'any-note' },
     },
     {
-      instruction: 'Press METRONOME to hear the click. Press it again to stop it.',
+      instruction: 'Press METRONOME to hear your keyboard’s click, then press it again to stop.',
       panelButton: 'METRONOME',
-      explanation: 'The metronome does not travel over the cable, so this one is on trust. You will use it a lot in Level 2.',
-      verify: { kind: 'manual' },
-    },
-    {
-      instruction: 'Find the PHONES/OUTPUT and SUSTAIN sockets on the back panel.',
-      panelButton: 'PHONES_OUTPUT',
-      explanation: 'Headphones mute the speakers, so you can practise late. A sustain footswitch goes next to it; you will need one by Level 9.',
+      explanation: 'Every chapter in the Zero to Hero PDF gives you a Metronome BPM range—both your keyboard and this app have a built-in metronome.',
       verify: { kind: 'manual' },
     },
   ],
@@ -58,139 +55,178 @@ export const MEET_YOUR_KEYBOARD: KeyboardTaskPayload = {
 
 export const POSTURE: ConceptPayload = {
   type: 'concept',
-  title: 'Posture and hand shape',
+  title: 'Chapter 2A: Best Posture for Pianists',
+  subtitle: 'PDF pp. 5–6 • Belly-button height, 90° elbow angle & chair without fixed armrests',
   track: 'play',
   durationMinutes: 4,
-  source: 'course 2A',
-  objectives: ['Sit so your forearms are level with the keys', 'Curve the fingers, relax the wrist, drop the shoulders'],
+  source: 'course 2A (pp. 5–6)',
+  objectives: [
+    'Position the piano at belly-button (navel) height (PDF p. 6 Rule #1)',
+    'Keep a 90° angle between elbow and hands with curved fingers (PDF p. 6 Rule #2)',
+    'Use a chair or bench without fixed armrests so your elbows can move freely across all octaves (PDF p. 6 Rule #3)',
+  ],
   cards: [
     {
-      title: 'Sit at the middle, a forearm away',
+      title: 'Rule 1: Piano at belly-button level (PDF p. 6)',
       body:
-        'Put the bench or chair in front of Middle C, the C nearest the middle of the keyboard.\n\nSit so that your elbows are a little in front of your body and your forearms are level with the keys. If the keys are higher than your forearms, raise the seat or lower the stand.',
+        'As Jash demonstrates in Chapter 2A (pages 5–6), your keyboard should sit right around your belly-button (navel) level when you are seated.\n\nIf the keyboard is too high (near your chest), your shoulders hunch up and your wrists bend awkwardly. Adjust your stand or seat height first.',
     },
     {
-      title: 'Hold an orange',
+      title: 'Rule 2: 90-degree angle between elbow and hands',
       body:
-        'Rest your right hand on the keys as if a small orange were under your palm. The fingers curve, the fingertips touch the keys, the knuckles make a gentle bridge.\n\nFlat fingers get stuck between keys. Curved fingers find the centre of each key without looking.',
+        'Your upper arms should hang naturally from your shoulders, forming a clean 90° angle at your elbows so your forearms are parallel to the floor.\n\nCurve your fingers gently as if holding a ball or orange so your fingertips—not flat fingers—press the keys.',
       diagram: 'finger-numbers',
     },
     {
-      title: 'Wrist level, shoulders down',
+      title: 'Rule 3: Chair without fixed armrests',
       body:
-        'The wrist should be a straight line from the forearm, not drooping below the keys and not hitched up above them.\n\nBefore you start, breathe out and let both shoulders drop. Tension starts there and travels down to the fingers.',
+        'Never sit in an office chair with wide, fixed armrests while playing piano! Fixed armrests block your elbows when your Left Hand reaches down to the bass octave or your Right Hand reaches up to the higher octave.\n\nUse a piano bench, stool, or armless chair and sit on the front half with a straight back.',
     },
     {
-      title: 'Look at the keys now, the screen later',
+      title: 'Finger numbers 1 to 5 (Both Hands)',
       body:
-        'For the first lessons it is fine to look down at your hand. The app will tell you the next key in words and show it on the small keyboard at the top of the lesson.\n\nAs the five-finger home becomes automatic you will look at the keys less, and that is when the falling notes start to help.',
+        'In every chapter of the course PDF, fingers are numbered 1 to 5 from the Thumb outward:\n• 1 = Thumb\n• 2 = Index finger\n• 3 = Middle finger\n• 4 = Ring finger\n• 5 = Little finger (Pinky)',
+      diagram: 'finger-numbers',
     },
   ],
 };
 
 export const KEYBOARD_MAP: ConceptPayload = {
   type: 'concept',
-  title: 'The keyboard map: black-key groups and Middle C',
-  track: 'play',
-  durationMinutes: 5,
-  source: 'existing wizard',
-  objectives: ['Find any C and any F by the black-key groups', 'Find Middle C without counting', 'Hear that the same note name repeats every octave'],
+  title: 'Chapter 2B.1: Everything About Sargam, Octaves & the 12 Swaras',
+  subtitle: 'PDF pp. 7–9 • Lower/Middle/Higher Octaves, Komal/Tivra Swaras & Kali Ek (C#) Fingering',
+  track: 'theory',
+  durationMinutes: 6,
+  source: 'course 2B (pp. 7–9)',
+  objectives: [
+    'Distinguish Lower Octave (dot below), Middle Octave (plain), and Higher Octave (dot above) on the keyboard (PDF p. 7)',
+    'Learn all 12 Sargam notes: 7 Shuddha + 4 Komal (Re, Ga, Dha, Ni) + 1 Tivra (Ma) (PDF p. 8)',
+    'Play the exact Kali Ek (C#) Sargam scale with Jash’s 2-3-1-2-3-4-1-2 fingering (PDF p. 9)',
+  ],
   cards: [
     {
-      title: 'Sixty-one keys, one pattern',
+      title: 'Three Octaves (Saptaks) on the Piano (PDF p. 7)',
       body:
-        'Your keyboard has 61 keys: 36 white and 25 black. The black keys are not spread evenly. They sit in groups of two and groups of three, and the pattern repeats five times across the keyboard.\n\nThat pattern is the map. Once you can read it, you never have to count keys from the end.',
-      highlight: { midis: [K.Cs4, K.Ds4, K.Fs4, K.Gs4, K.As4], colour: 'amber' },
+        'Look at the black keys: they repeat in groups of 2 black keys + 3 black keys. Each 12-key pattern is one Octave (Saptak):\n\n• Lower Octave (Mandra Saptak — dot below, e.g. SẠ): Deeper, heavier voice on the left.\n• Middle Octave (Madhya Saptak — no dot, e.g. SA): Center of the keyboard where most melodies live.\n• Higher Octave (Taar Saptak — dot above, or RED notes in the PDF): Bright, high voice on the right.',
+      highlight: { midis: [K.C3, K.C4, K.C5], labels: { [K.C3]: 'Low Sa', [K.C4]: 'Mid Sa', [K.C5]: 'High Sa' } },
+      tryIt: { prompt: 'Press Low C (C3), Middle C (C4), and High C (C5) in order.', targetMidis: [K.C3, K.C4, K.C5] },
     },
     {
-      title: 'C sits just left of the two black keys',
-      body: 'Every white key immediately to the left of a group of two black keys is a C. There are six of them on your keyboard.',
-      highlight: { midis: allOfClass(0), labels: labels(allOfClass(0), ['C']) },
-    },
-    {
-      title: 'Middle C',
+      title: 'All 12 Notes in Sargam: Shuddha, Komal & Tivra (PDF p. 8)',
       body:
-        'Of those six Cs, the one nearest the middle of the keyboard is Middle C. Musicians write it C4. In this app it is also Sa, the home note of Sargam.\n\nPress it now.',
-      highlight: { midis: [K.C4], labels: { [K.C4]: 'C4' } },
-      tryIt: { prompt: 'Press Middle C.', targetMidis: [K.C4] },
+        'Between one SA and the next SA there are 12 total keys (7 Shuddha + 5 Vikrit):\n\n• SA and PA are fixed (immovable — they have no Komal or Tivra).\n• RE, GA, DHA, NI each have a Komal (underlined) note 1 key to the left.\n• MA has a Tivra (MÁ) note 1 key to the right.\n\nTotal = 12 Swaras in every octave!',
+      highlight: {
+        midis: [K.C4, K.Cs4, K.D4, K.Ds4, K.E4, K.F4, K.Fs4, K.G4, K.Gs4, K.A4, K.As4, K.B4],
+        labels: {
+          [K.C4]: 'Sa',
+          [K.Cs4]: 're',
+          [K.D4]: 'Re',
+          [K.Ds4]: 'ga',
+          [K.E4]: 'Ga',
+          [K.F4]: 'Ma',
+          [K.Fs4]: 'Ma#',
+          [K.G4]: 'Pa',
+          [K.Gs4]: 'dha',
+          [K.A4]: 'Dha',
+          [K.As4]: 'ni',
+          [K.B4]: 'Ni',
+        },
+      },
     },
     {
-      title: 'F sits just left of the three black keys',
-      body: 'The same trick works for the other group. The white key immediately left of three black keys is always an F.',
-      highlight: { midis: allOfClass(5), labels: labels(allOfClass(5), ['F']) },
-      tryIt: { prompt: 'Press any F.', targetMidis: [K.F4], anyOctave: true },
-    },
-    {
-      title: 'Same name, higher voice',
+      title: 'Finger Positions in Sargam — Kali Ek / C# (PDF p. 9)',
       body:
-        'Play Middle C, then the next C to the right. It is the same note, one octave higher: the same name, a thinner voice. Every note name repeats like this all the way up the keyboard.',
-      highlight: { midis: [K.C4, K.C5], labels: { [K.C4]: 'C4', [K.C5]: 'C5' } },
-      tryIt: { prompt: 'Press C4, then C5.', targetMidis: [K.C4, K.C5] },
+        'On page 9 of the PDF, Jash shows the classic Indian Sargam scale starting on the first black key (C# / Kali Ek):\n\n• SA (C#) = Finger 2\n• RE (D#) = Finger 3\n• GA (F white key) = Finger 1 (Thumb tucks under!)\n• MA (F#) = Finger 2\n• PA (G#) = Finger 3\n• DHA (A#) = Finger 4\n• NI (C white key) = Finger 1 (Thumb tucks under!)\n• SȦ (C#) = Finger 2',
+      highlight: { midis: KALI_EK_MIDIS, labels: labels(KALI_EK_MIDIS, KALI_EK_FINGERS) },
+      tryIt: {
+        prompt: 'Play SA RE GA MA PA DHA NI SȦ starting from C#4 (Kali Ek) with 2-3-1-2-3-4-1-2.',
+        targetMidis: KALI_EK_MIDIS,
+      },
     },
   ],
 };
 
 export const SARGAM_AND_WESTERN: ConceptPayload = {
   type: 'concept',
-  title: 'Sargam and Western names',
-  subtitle: 'Why both are shown and which to think in',
+  title: 'Chapter 2D: Sargam v/s Western Notes — Which is Easy?',
+  subtitle: 'PDF pp. 12–13 • Why Sargam is movable and Western notes (C to B) are fixed',
   track: 'theory',
   durationMinutes: 5,
-  source: 'course 2B, 2D',
-  objectives: ['Match Sa Re Ga Ma Pa Dha Ni to C D E F G A B', 'Know that Sa can move but starts on C here', 'Play the seven notes in order'],
+  source: 'course 2D (pp. 12–13)',
+  objectives: [
+    'Understand why Sargam is movable (any key can become Sa) while Western notes are fixed (C is always C) (PDF p. 12)',
+    'Name all 7 white keys (C D E F G A B) and all 5 black keys (C# D# F# G# A#) (PDF p. 13)',
+    'Know why the rest of the Zero to Hero course uses Western letter names for scales, chords, and songs',
+  ],
   cards: [
     {
-      title: 'Seven names, seven white keys',
+      title: 'The Core Difference: Movable Sa vs. Fixed C (PDF p. 12)',
       body:
-        'Indian music names the notes Sa, Re, Ga, Ma, Pa, Dha, Ni. Western music names the same seven white keys C, D, E, F, G, A, B.\n\nFrom Middle C upward they line up one to one. The eighth key is Sa again, an octave higher.',
-      highlight: { midis: WHITE_C4_B4, labels: labels(WHITE_C4_B4, SARGAM) },
+        'In Chapter 2D (pages 12–13), Jash compares Sargam and Western notation:\n\n• In Sargam, "SA" is movable—a male singer might make C# his SA, while a female singer might make G# her SA.\n• In Western notation, every key has one permanent name forever: the white key left of the 2 black keys is ALWAYS "C".',
+      highlight: { midis: allOfClass(0), labels: labels(allOfClass(0), ['C']) },
     },
     {
-      title: 'Sa can move; C cannot',
+      title: 'The 7 White Keys: C D E F G A B (PDF p. 13)',
       body:
-        'Here is the real difference. C is always the same key. Sa is wherever the song starts: a singer picks a comfortable Sa and every other note follows from it.\n\nFor now we fix Sa on C so both systems agree. Later, when you transpose for a singer, Sa moves and you will be glad you learned it this way.',
-      highlight: { midis: [K.C4], labels: { [K.C4]: 'Sa = C' } },
+        'Starting from the white key to the left of the two black keys, the 7 white keys are named:\nC – D – E – F – G – A – B.\n\nWhen SA is on C, they match SA – RE – GA – MA – PA – DHA – NI one-to-one.',
+      highlight: { midis: WHITE_C4_B4, labels: labels(WHITE_C4_B4, ['C', 'D', 'E', 'F', 'G', 'A', 'B']) },
+      tryIt: { prompt: 'Play the 7 white keys from Middle C4 up to B4.', targetMidis: WHITE_C4_B4 },
     },
     {
-      title: 'Which should you think in?',
+      title: 'The 5 Black Keys: Sharps (#) & Flats (b) (PDF p. 13)',
       body:
-        'Think in Sargam for melodies: it tells you the distance from home, which is what your ear hears.\n\nThink in Western names for chords and for reading music: chord symbols and sheet music are written that way everywhere.\n\nThis app shows both until you ask it not to.',
+        'Moving 1 key to the RIGHT of a white key gives its Sharp (#):\n• C → C# (or Db)\n• D → D# (or Eb)\n• F → F# (or Gb)\n• G → G# (or Ab)\n• A → A# (or Bb)\n\nNotice E and B have no black key to their right!',
+      highlight: {
+        midis: [K.Cs4, K.Ds4, K.Fs4, K.Gs4, K.As4],
+        labels: { [K.Cs4]: 'C#', [K.Ds4]: 'D#', [K.Fs4]: 'F#', [K.Gs4]: 'G#', [K.As4]: 'A#' },
+        colour: 'amber',
+      },
+      tryIt: {
+        prompt: 'Press the 5 black keys in the middle octave: C#, D#, F#, G#, A#.',
+        targetMidis: [K.Cs4, K.Ds4, K.Fs4, K.Gs4, K.As4],
+      },
     },
     {
-      title: 'Play the seven',
-      body: 'Thumb on Sa, then one white key at a time up to Ni, then Sa again.',
+      title: 'Why We Use Western Notes From Here On',
+      body:
+        'Because Western keys are fixed, writing "Play F# Major chord" or "Play E – G – A – G" tells you the exact physical keys on your piano with zero confusion!\n\nVirtuosoStudio lets you toggle between Western names, Sargam, and Finger Numbers anytime in the toolbar.',
       highlight: { midis: [...WHITE_C4_B4, K.C5], labels: labels([...WHITE_C4_B4, K.C5], [...SARGAM, 'Sa']) },
-      tryIt: { prompt: 'Play Sa Re Ga Ma Pa Dha Ni Sa, in order.', targetMidis: [...WHITE_C4_B4, K.C5] },
     },
   ],
 };
 
 export const TOUCH_RESPONSE: KeyboardTaskPayload = {
   type: 'keyboard-task',
-  title: 'Touch Response: Soft, Medium, Hard, Fixed',
-  subtitle: 'What velocity is; see your own touch on screen',
+  title: 'Chapter 9A: How to Use Touch Sensitive Function',
+  subtitle: 'PDF pp. 239–240 • Playing Soft (Piano) vs. Loud (Forte) & Crescendo/Diminuendo',
   track: 'keyboard',
   durationMinutes: 6,
-  source: 'course 9A',
-  objectives: ['Hear and see that harder keystrokes play louder', 'Find the Touch Response setting in FUNCTION', 'Know why Fixed is useful for one lesson and wrong for the rest'],
+  source: 'course 9A (pp. 239–240)',
+  objectives: [
+    'Understand how Touch Sensitivity turns finger speed/pressure into volume & emotion (PDF p. 239)',
+    'Practice Jash’s Scale Dynamics drill: start very soft, build to loud in the middle, and fade back to soft (PDF p. 240)',
+    'Verify Touch Response settings on your keyboard over USB MIDI',
+  ],
   steps: [
     {
-      instruction: 'Play eight keys: some as softly as you can, some firmly. Watch the touch meter below.',
+      instruction:
+        'Play 8 notes starting as softly as a whisper (low velocity) and gradually pressing harder (crescendo) up to loud! Watch the live velocity meter.',
       explanation:
-        'Each keystroke carries a number from 1 to 127 called velocity. The keyboard uses it to decide how loud to play. This app uses it to score how you shape a melody.',
+        'In Chapter 9A (pp. 239–240), Jash shows that Touch Sensitivity is what separates a robotic keyboard player from an expressive pianist. Soft touch = intimate emotion; firm touch = chorus power!',
       verify: { kind: 'touch-response', expect: 'variable' },
     },
     {
       instruction:
-        'Press FUNCTION, then use the CATEGORY buttons to reach "TouchRes". Use +/− to set it to Fixed. Press EXIT, then play eight keys again, soft and hard.',
+        'On your keyboard, press FUNCTION and check "TouchRes". Set it to Fixed briefly and play 8 keys to hear how robotic a non-touch keyboard sounds.',
       panelButton: 'FUNCTION',
-      explanation: 'Every key now arrives at the same velocity. The meter stops moving: the keyboard has stopped listening to your touch.',
+      explanation: 'With Touch Response off (Fixed), every note blasts at the exact same volume no matter how gently you play.',
       verify: { kind: 'touch-response', expect: 'fixed' },
     },
     {
-      instruction: 'Go back into FUNCTION and set TouchRes to Medium (2). Play eight keys once more.',
+      instruction:
+        'Switch TouchRes back to Medium (or Soft) in FUNCTION, then play a scale starting soft, getting loud at the top, and fading soft at the end.',
       panelButton: 'FUNCTION',
-      explanation: 'Medium suits most players. Soft makes it easier to play loud; Hard asks for more force. Leave it on Medium unless your hands tell you otherwise.',
+      explanation: 'Always keep Touch Sensitivity ON when playing songs in Modules 4, 6, 9, and 10!',
       verify: { kind: 'touch-response', expect: 'variable' },
     },
   ],
